@@ -9,6 +9,7 @@ import {IPoolAddressesProvider} from 'aave-v3-origin/contracts/interfaces/IPoolA
 import {IPoolConfigurator} from 'aave-v3-origin/contracts/interfaces/IPoolConfigurator.sol';
 import {IACLManager} from 'aave-v3-origin/contracts/interfaces/IACLManager.sol';
 import {AaveV3HorizonEthereum} from './AaveV3HorizonEthereum.sol';
+import {HorizonRwaWhitelistHelper} from './HorizonRwaWhitelistHelper.sol';
 
 /**
  * @dev Adapted from ProtocolV3TestBase for the Horizon market (currently at Aave v3.3).
@@ -18,43 +19,9 @@ import {AaveV3HorizonEthereum} from './AaveV3HorizonEthereum.sol';
  * - Adds helper to return all actors used in E2E test such that they may be whitelisted to hold RWA tokens.
  * - Update errors to v3.3 string format.
  */
-abstract contract ProtocolV3HorizonTestBase is ProtocolV3TestBase {
+abstract contract ProtocolV3HorizonTestBase is ProtocolV3TestBase, HorizonRwaWhitelistHelper {
   string public constant BORROW_CAP_EXCEEDED = '50';
   string public constant SUPPLY_CAP_EXCEEDED = '51';
-
-  // RWA compliance constants — Superstate (USTB, USCC)
-  address internal constant SUPERSTATE_ALLOWLIST_V2 = 0x02f1fA8B196d21c7b733EB2700B825611d8A38E5;
-  uint256 internal constant SUPERSTATE_ROOT_ENTITY_ID = 1;
-
-  // RWA compliance constants — Centrifuge (JTRSY, JAAA)
-  address internal constant CENTRIFUGE_HOOK = 0xa2C98F0F76Da0C97039688CA6280d082942d0b48;
-  address internal constant CENTRIFUGE_WARD = 0xFEE13c017693a4706391D516ACAbF6789D5c3157;
-
-  // RWA compliance constants — Circle (USYC)
-  uint8 internal constant CIRCLE_INVESTOR_SDYF_INTERNATIONAL_ROLE = 3;
-  address internal constant CIRCLE_SET_USER_ROLE_AUTHORIZED_CALLER =
-    0xDbE01f447040F78ccbC8Dfd101BEc1a2C21f800D;
-
-  // RWA compliance constants — Securitize/DigiShares (VBILL)
-  address internal constant VBILL_SECURITIZE_ADMIN = 0xDA8e2d926D28a86aeE933d928357583aae5D3b85;
-  string internal constant VBILL_SECURITIZE_FUND_ID = 'f27e20ca73314651b387da0aa9116f30';
-
-  // RWA compliance constants — Superstate (USTB, USCC)
-  address internal constant SUPERSTATE_ALLOWLIST_V2 = 0x02f1fA8B196d21c7b733EB2700B825611d8A38E5;
-  uint256 internal constant SUPERSTATE_ROOT_ENTITY_ID = 1;
-
-  // RWA compliance constants — Centrifuge (JTRSY, JAAA)
-  address internal constant CENTRIFUGE_HOOK = 0xa2C98F0F76Da0C97039688CA6280d082942d0b48;
-  address internal constant CENTRIFUGE_WARD = 0xFEE13c017693a4706391D516ACAbF6789D5c3157;
-
-  // RWA compliance constants — Circle (USYC)
-  uint8 internal constant CIRCLE_INVESTOR_SDYF_INTERNATIONAL_ROLE = 3;
-  address internal constant CIRCLE_SET_USER_ROLE_AUTHORIZED_CALLER =
-    0xDbE01f447040F78ccbC8Dfd101BEc1a2C21f800D;
-
-  // RWA compliance constants — Securitize/DigiShares (VBILL)
-  address internal constant VBILL_SECURITIZE_ADMIN = 0xDA8e2d926D28a86aeE933d928357583aae5D3b85;
-  string internal constant VBILL_SECURITIZE_FUND_ID = 'f27e20ca73314651b387da0aa9116f30';
 
   /**
    * @dev Execute a Horizon payload by granting it POOL_ADMIN role and calling execute() directly.
@@ -103,6 +70,9 @@ abstract contract ProtocolV3HorizonTestBase is ProtocolV3TestBase {
 
     configChangePlausibilityTest(configBefore, configAfter);
 
+    // whitelist E2E actors on RWA compliance systems before running E2E
+    _whitelistRwaActors(pool, _testActors());
+
     e2eTest_v3_3(pool);
     return (configBefore, configAfter);
   }
@@ -126,7 +96,9 @@ abstract contract ProtocolV3HorizonTestBase is ProtocolV3TestBase {
   }
 
   struct E2ETestAssetLocalVars {
-    address collateralSupplier;
+    address emodeCollateralSupplier;
+    address regularCollateralSupplier;
+    address borrower; // chosen per test asset based on eMode compatibility
     address testAssetSupplier;
     address liquidator;
     uint256 collateralAssetAmount;
@@ -149,7 +121,8 @@ abstract contract ProtocolV3HorizonTestBase is ProtocolV3TestBase {
       testAssetConfig.symbol
     );
     E2ETestAssetLocalVars memory vars;
-    vars.collateralSupplier = makeAddr('collateralSupplier');
+    vars.emodeCollateralSupplier = makeAddr('emodeCollateralSupplier');
+    vars.regularCollateralSupplier = makeAddr('regularCollateralSupplier');
     vars.testAssetSupplier = makeAddr('testAssetSupplier');
     vars.liquidator = makeAddr('liquidator');
     require(collateralConfig.usageAsCollateralEnabled, 'COLLATERAL_CONFIG_MUST_BE_COLLATERAL');
@@ -171,8 +144,10 @@ abstract contract ProtocolV3HorizonTestBase is ProtocolV3TestBase {
     }
     vm.stopPrank();
 
-    _enableIfEMode(collateralConfig, pool, vars.collateralSupplier);
-    _deposit(collateralConfig, pool, vars.collateralSupplier, vars.collateralAssetAmount);
+    // eMode supplier enters eMode; regular supplier stays in eMode 0
+    _enableIfEMode(collateralConfig, pool, vars.emodeCollateralSupplier);
+    _deposit(collateralConfig, pool, vars.emodeCollateralSupplier, vars.collateralAssetAmount);
+    _deposit(collateralConfig, pool, vars.regularCollateralSupplier, vars.collateralAssetAmount);
     _deposit(testAssetConfig, pool, vars.testAssetSupplier, vars.testAssetAmount);
 
     uint256 snapshotAfterDeposits = vm.snapshotState();
@@ -208,10 +183,6 @@ abstract contract ProtocolV3HorizonTestBase is ProtocolV3TestBase {
         vm.prank(addressesProvider.getACLAdmin());
         poolConfigurator.setSupplyCap(testAssetConfig.underlying, 0);
 
-        // aTokenTotalSupply == 10'000$
-        // borrowAmount > 10'000$
-        // need to add more test asset in order to be able to borrow it
-        // right now there is not enough underlying tokens in the aToken
         _deposit(
           testAssetConfig,
           pool,
@@ -219,24 +190,22 @@ abstract contract ProtocolV3HorizonTestBase is ProtocolV3TestBase {
           vars.borrowAmount - vars.aTokenTotalSupply
         );
 
-        // need to add more collateral in order to be able to borrow
-        // collateralAssetAmount == 100'000$
         _deposit(
           collateralConfig,
           pool,
-          vars.collateralSupplier,
+          vars.regularCollateralSupplier,
           (vars.collateralAssetAmount * vars.borrowAmount) / vars.aTokenTotalSupply
         );
       }
 
       vm.expectRevert(bytes(BORROW_CAP_EXCEEDED));
-      vm.prank(vars.collateralSupplier);
+      vm.prank(vars.regularCollateralSupplier);
       pool.borrow({
         asset: testAssetConfig.underlying,
         amount: vars.borrowAmount,
         interestRateMode: 2,
         referralCode: 0,
-        onBehalfOf: vars.collateralSupplier
+        onBehalfOf: vars.regularCollateralSupplier
       });
     }
 
@@ -247,95 +216,42 @@ abstract contract ProtocolV3HorizonTestBase is ProtocolV3TestBase {
 
     vm.revertToState(snapshotAfterDeposits);
 
-    // test borrows, repayments and liquidations
+    // always test non-emode: borrow/repay/liquidation
     if (testAssetConfig.borrowingEnabled) {
-      // test borrowing and repayment
-      _borrow({
-        config: testAssetConfig,
-        pool: pool,
-        user: vars.collateralSupplier,
-        amount: vars.testAssetAmount
-      });
-
-      uint256 snapshotBeforeRepay = vm.snapshotState();
-
-      _repay({
-        config: testAssetConfig,
-        pool: pool,
-        user: vars.collateralSupplier,
-        amount: vars.testAssetAmount,
-        withATokens: false
-      });
-
-      vm.revertToState(snapshotBeforeRepay);
-
-      _repay({
-        config: testAssetConfig,
-        pool: pool,
-        user: vars.collateralSupplier,
-        amount: vars.testAssetAmount,
-        withATokens: true
-      });
-
-      vm.revertToState(snapshotAfterDeposits);
-
-      // test liquidations
-      _borrow({
-        config: testAssetConfig,
-        pool: pool,
-        user: vars.collateralSupplier,
-        amount: vars.testAssetAmount
-      });
-
-      if (testAssetConfig.underlying != collateralConfig.underlying) {
-        _changeAssetPrice(pool, testAssetConfig, 1000_00); // price increases to 1'000%
-      } else {
-        _setAssetLtvAndLiquidationThreshold({
-          pool: pool,
-          config: testAssetConfig,
-          newLtv: 5_00,
-          newLiquidationThreshold: 5_00
-        });
-      }
-
-      uint256 snapshotBeforeLiquidation = vm.snapshotState();
-
-      // receive underlying tokens
-      _liquidationCall({
-        collateralConfig: collateralConfig,
-        debtConfig: testAssetConfig,
-        pool: pool,
-        liquidator: makeAddr('liquidator'),
-        borrower: vars.collateralSupplier,
-        debtToCover: type(uint256).max,
-        receiveAToken: false
-      });
-
-      vm.revertToState(snapshotBeforeLiquidation);
-
-      // receive ATokens
-      if (!_isRwaToken(collateralConfig)) {
-        // cannot receive ATokens for RWA collateral liquidations
-        _liquidationCall({
-          collateralConfig: collateralConfig,
-          debtConfig: testAssetConfig,
-          pool: pool,
-          liquidator: makeAddr('liquidator'),
-          borrower: vars.collateralSupplier,
-          debtToCover: type(uint256).max,
-          receiveAToken: true
-        });
-      }
-
-      vm.revertToState(snapshotAfterDeposits);
+      _testBorrowRepayLiquidation(
+        pool,
+        collateralConfig,
+        testAssetConfig,
+        vars.regularCollateralSupplier,
+        vars.testAssetAmount,
+        snapshotAfterDeposits
+      );
     }
+
+    // eMode: additional borrow/repay test if asset is eMode-borrowable
+    if (
+      testAssetConfig.borrowingEnabled &&
+      _isBorrowableInCollateralEMode(pool, collateralConfig, testAssetConfig)
+    ) {
+      vm.revertToState(snapshotAfterDeposits);
+      _testBorrowRepayLiquidation(
+        pool,
+        collateralConfig,
+        testAssetConfig,
+        vars.emodeCollateralSupplier,
+        vars.testAssetAmount,
+        snapshotAfterDeposits
+      );
+    }
+
+    vm.revertToState(snapshotAfterDeposits);
 
     // test flashloans
     if (testAssetConfig.isFlashloanable) {
       _flashLoan({
         config: testAssetConfig,
         pool: pool,
-        user: vars.collateralSupplier,
+        user: vars.regularCollateralSupplier,
         receiverAddress: address(this),
         amount: vars.testAssetAmount,
         interestRateMode: 0
@@ -345,7 +261,7 @@ abstract contract ProtocolV3HorizonTestBase is ProtocolV3TestBase {
         _flashLoan({
           config: testAssetConfig,
           pool: pool,
-          user: vars.collateralSupplier,
+          user: vars.regularCollateralSupplier,
           receiverAddress: address(this),
           amount: vars.testAssetAmount,
           interestRateMode: 2
@@ -354,10 +270,84 @@ abstract contract ProtocolV3HorizonTestBase is ProtocolV3TestBase {
     }
   }
 
+  function _testBorrowRepayLiquidation(
+    IPool pool,
+    ReserveConfig memory collateralConfig,
+    ReserveConfig memory testAssetConfig,
+    address borrower,
+    uint256 testAssetAmount,
+    uint256 snapshotAfterDeposits
+  ) internal {
+    // borrow and repay
+    _borrow({config: testAssetConfig, pool: pool, user: borrower, amount: testAssetAmount});
+
+    uint256 snapshotBeforeRepay = vm.snapshotState();
+
+    _repay({
+      config: testAssetConfig,
+      pool: pool,
+      user: borrower,
+      amount: testAssetAmount,
+      withATokens: false
+    });
+
+    vm.revertToState(snapshotBeforeRepay);
+
+    _repay({
+      config: testAssetConfig,
+      pool: pool,
+      user: borrower,
+      amount: testAssetAmount,
+      withATokens: true
+    });
+
+    vm.revertToState(snapshotAfterDeposits);
+
+    // liquidation
+    _borrow({config: testAssetConfig, pool: pool, user: borrower, amount: testAssetAmount});
+
+    if (testAssetConfig.underlying != collateralConfig.underlying) {
+      _changeAssetPrice(pool, testAssetConfig, 1000_00);
+    } else {
+      _setAssetLtvAndLiquidationThreshold({
+        pool: pool,
+        config: testAssetConfig,
+        newLtv: 5_00,
+        newLiquidationThreshold: 5_00
+      });
+    }
+
+    uint256 snapshotBeforeLiquidation = vm.snapshotState();
+
+    _liquidationCall({
+      collateralConfig: collateralConfig,
+      debtConfig: testAssetConfig,
+      pool: pool,
+      liquidator: makeAddr('liquidator'),
+      borrower: borrower,
+      debtToCover: type(uint256).max,
+      receiveAToken: false
+    });
+
+    vm.revertToState(snapshotBeforeLiquidation);
+
+    if (!_isRwaToken(collateralConfig)) {
+      _liquidationCall({
+        collateralConfig: collateralConfig,
+        debtConfig: testAssetConfig,
+        pool: pool,
+        liquidator: makeAddr('liquidator'),
+        borrower: borrower,
+        debtToCover: type(uint256).max,
+        receiveAToken: true
+      });
+    }
+  }
+
   function _isRwaToken(ReserveConfig memory config) internal view returns (bool) {
-    address RWA_A_TOKEN_INSTANCE = 0x1d0Da70de08987b1888befECe0024443Bf3c2450;
     bytes32 IMPL_SLOT = bytes32(uint256(keccak256('eip1967.proxy.implementation')) - 1);
-    return address(uint160(uint256(vm.load(config.aToken, IMPL_SLOT)))) == RWA_A_TOKEN_INSTANCE;
+    address impl = address(uint160(uint256(vm.load(config.aToken, IMPL_SLOT))));
+    return impl == AaveV3HorizonEthereum.RWA_ATOKEN_IMPL;
   }
 
   function _enableIfEMode(ReserveConfig memory config, IPool pool, address user) internal {
@@ -365,11 +355,11 @@ abstract contract ProtocolV3HorizonTestBase is ProtocolV3TestBase {
     pool.setUserEMode(0);
 
     // eMode id 0 is skipped intentionally as it is the reserved default
-    for (uint8 id = 1; id < 256; ++id) {
+    for (uint256 id = 1; id <= 255; ++id) {
       uint256 reserveId = pool.getReserveData(config.underlying).id;
-      if ((pool.getEModeCategoryCollateralBitmap(id) >> reserveId) & 1 != 0) {
+      if ((pool.getEModeCategoryCollateralBitmap(uint8(id)) >> reserveId) & 1 != 0) {
         vm.prank(user);
-        pool.setUserEMode(id);
+        pool.setUserEMode(uint8(id));
         break;
       }
     }
@@ -396,10 +386,34 @@ abstract contract ProtocolV3HorizonTestBase is ProtocolV3TestBase {
     revert('ERROR: No usable collateral found');
   }
 
+  /**
+   * @dev Checks if testAsset is borrowable in any eMode where collateral is accepted.
+   */
+  function _isBorrowableInCollateralEMode(
+    IPool pool,
+    ReserveConfig memory collateralConfig,
+    ReserveConfig memory testAssetConfig
+  ) internal view returns (bool) {
+    uint256 collateralReserveId = pool.getReserveData(collateralConfig.underlying).id;
+    uint256 testReserveId = pool.getReserveData(testAssetConfig.underlying).id;
+    for (uint256 id = 1; id <= 255; ++id) {
+      bool collateralInEMode = (pool.getEModeCategoryCollateralBitmap(uint8(id)) >>
+        collateralReserveId) &
+        1 !=
+        0;
+      bool borrowableInEMode = (pool.getEModeCategoryBorrowableBitmap(uint8(id)) >> testReserveId) &
+        1 !=
+        0;
+      if (collateralInEMode && borrowableInEMode) return true;
+    }
+    return false;
+  }
+
   function _testActors() internal returns (address[] memory actors) {
-    actors = new address[](3);
-    actors[0] = makeAddr('collateralSupplier');
-    actors[1] = makeAddr('testAssetSupplier');
-    actors[2] = makeAddr('liquidator');
+    actors = new address[](4);
+    actors[0] = makeAddr('emodeCollateralSupplier');
+    actors[1] = makeAddr('regularCollateralSupplier');
+    actors[2] = makeAddr('testAssetSupplier');
+    actors[3] = makeAddr('liquidator');
   }
 }

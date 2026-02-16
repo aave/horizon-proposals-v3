@@ -52,6 +52,8 @@ library AaveV3HorizonEthereum {
   address public constant RLUSD_UNDERLYING = 0x8292Bb45bf1Ee4d140127049757C2E0fF06317eD;
   address public constant RLUSD_PRICE_FEED = 0x26C46B7aD0012cA71F2298ada567dC9Af14E7f2A;
 
+  address public constant ACRED_UNDERLYING = 0x17418038ecF73BA4026c4f428547BF099706F27B;
+
   // oracle param registry
   address public constant RWA_ORACLE_PARAMS_REGISTRY = 0x69D55D504BC9556E377b340D19818E736bbB318b;
 }
