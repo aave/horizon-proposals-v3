@@ -7,6 +7,8 @@ import {IPool} from 'aave-v3-origin/contracts/interfaces/IPool.sol';
 import {ProtocolV3TestBase, ReserveConfig} from 'aave-helpers/src/ProtocolV3TestBase.sol';
 import {IPoolAddressesProvider} from 'aave-v3-origin/contracts/interfaces/IPoolAddressesProvider.sol';
 import {IPoolConfigurator} from 'aave-v3-origin/contracts/interfaces/IPoolConfigurator.sol';
+import {IACLManager} from 'aave-v3-origin/contracts/interfaces/IACLManager.sol';
+import {AaveV3HorizonEthereum} from './AaveV3HorizonEthereum.sol';
 
 /**
  * @dev Adapted from ProtocolV3TestBase for the Horizon market (currently at Aave v3.3).
@@ -19,6 +21,55 @@ import {IPoolConfigurator} from 'aave-v3-origin/contracts/interfaces/IPoolConfig
 abstract contract ProtocolV3HorizonTestBase is ProtocolV3TestBase {
   string public constant BORROW_CAP_EXCEEDED = '50';
   string public constant SUPPLY_CAP_EXCEEDED = '51';
+
+  // RWA compliance constants — Superstate (USTB, USCC)
+  address internal constant SUPERSTATE_ALLOWLIST_V2 = 0x02f1fA8B196d21c7b733EB2700B825611d8A38E5;
+  uint256 internal constant SUPERSTATE_ROOT_ENTITY_ID = 1;
+
+  // RWA compliance constants — Centrifuge (JTRSY, JAAA)
+  address internal constant CENTRIFUGE_HOOK = 0xa2C98F0F76Da0C97039688CA6280d082942d0b48;
+  address internal constant CENTRIFUGE_WARD = 0xFEE13c017693a4706391D516ACAbF6789D5c3157;
+
+  // RWA compliance constants — Circle (USYC)
+  uint8 internal constant CIRCLE_INVESTOR_SDYF_INTERNATIONAL_ROLE = 3;
+  address internal constant CIRCLE_SET_USER_ROLE_AUTHORIZED_CALLER =
+    0xDbE01f447040F78ccbC8Dfd101BEc1a2C21f800D;
+
+  // RWA compliance constants — Securitize/DigiShares (VBILL)
+  address internal constant VBILL_SECURITIZE_ADMIN = 0xDA8e2d926D28a86aeE933d928357583aae5D3b85;
+  string internal constant VBILL_SECURITIZE_FUND_ID = 'f27e20ca73314651b387da0aa9116f30';
+
+  // RWA compliance constants — Superstate (USTB, USCC)
+  address internal constant SUPERSTATE_ALLOWLIST_V2 = 0x02f1fA8B196d21c7b733EB2700B825611d8A38E5;
+  uint256 internal constant SUPERSTATE_ROOT_ENTITY_ID = 1;
+
+  // RWA compliance constants — Centrifuge (JTRSY, JAAA)
+  address internal constant CENTRIFUGE_HOOK = 0xa2C98F0F76Da0C97039688CA6280d082942d0b48;
+  address internal constant CENTRIFUGE_WARD = 0xFEE13c017693a4706391D516ACAbF6789D5c3157;
+
+  // RWA compliance constants — Circle (USYC)
+  uint8 internal constant CIRCLE_INVESTOR_SDYF_INTERNATIONAL_ROLE = 3;
+  address internal constant CIRCLE_SET_USER_ROLE_AUTHORIZED_CALLER =
+    0xDbE01f447040F78ccbC8Dfd101BEc1a2C21f800D;
+
+  // RWA compliance constants — Securitize/DigiShares (VBILL)
+  address internal constant VBILL_SECURITIZE_ADMIN = 0xDA8e2d926D28a86aeE933d928357583aae5D3b85;
+  string internal constant VBILL_SECURITIZE_FUND_ID = 'f27e20ca73314651b387da0aa9116f30';
+
+  /**
+   * @dev Execute a Horizon payload by granting it POOL_ADMIN role and calling execute() directly.
+   * Horizon has no standard Aave governance payloads controller — it uses a multisig executor.
+   * This simulates the executor's delegatecall execution path for testing.
+   */
+  function _executeHorizonPayload(address payload) internal {
+    address aclAdmin = IPoolAddressesProvider(AaveV3HorizonEthereum.POOL_ADDRESSES_PROVIDER)
+      .getACLAdmin();
+    vm.startPrank(aclAdmin);
+    IACLManager(AaveV3HorizonEthereum.ACL_MANAGER).addPoolAdmin(payload);
+    vm.stopPrank();
+    (bool success, bytes memory resultData) = payload.call(abi.encodeWithSignature('execute()'));
+    require(success, string(resultData));
+  }
 
   /**
    * @dev runs the default test suite that should run on any proposal touching the aave protocol which includes:
@@ -37,7 +88,7 @@ abstract contract ProtocolV3HorizonTestBase is ProtocolV3TestBase {
     uint256 startGas = gasleft();
 
     vm.startStateDiffRecording();
-    executePayload(vm, payload);
+    _executeHorizonPayload(payload);
     string memory rawDiff = vm.getStateDiffJson();
 
     uint256 gasUsed = startGas - gasleft();
