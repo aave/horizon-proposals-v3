@@ -14,7 +14,12 @@ import {AaveV3Horizon_ACREDListing_20260217} from 'src/AaveV3Horizon_ACREDListin
 contract AaveV3Horizon_ACREDListing_20260217_Test is ProtocolV3HorizonTestBase {
   AaveV3Horizon_ACREDListing_20260217 internal proposal;
 
-  function setUp() public {
+  ExpectedAssetConfig internal expectedAssetConfig;
+  ExpectedEModeConfig internal expectedEModeConfig;
+
+  function setUp() public virtual {
+    _setExpectedConfig();
+
     vm.createSelectFork(vm.rpcUrl('mainnet'), 24473387);
     proposal = new AaveV3Horizon_ACREDListing_20260217();
   }
@@ -36,7 +41,7 @@ contract AaveV3Horizon_ACREDListing_20260217_Test is ProtocolV3HorizonTestBase {
   function test_acredConfig() public {
     IPool pool = IPool(AaveV3HorizonEthereum.POOL);
 
-    // check eMode 5 is set to previous default
+    // check eMode 5 before execution (pool default values, no label/assets)
     _assertEModeConfig(
       pool,
       ExpectedEModeConfig({
@@ -50,43 +55,70 @@ contract AaveV3Horizon_ACREDListing_20260217_Test is ProtocolV3HorizonTestBase {
       })
     );
 
+    // execute payload
     _executeHorizonPayload(address(proposal));
 
-    _assertAssetConfig(
-      pool,
-      ExpectedAssetConfig({
-        underlying: AaveV3HorizonEthereum.ACRED_UNDERLYING,
-        isRwa: true,
-        oracle: 0x60AEd7d20AC6328f7BA771aD58931c996aff30E8,
-        aTokenName: 'Aave Horizon RWA ACRED',
-        aTokenSymbol: 'aHorRwaACRED',
-        variableDebtTokenName: 'Aave Horizon RWA Variable Debt ACRED',
-        variableDebtTokenSymbol: 'variableDebtHorRwaACRED',
-        supplyCap: 15_000_000,
-        borrowCap: 0,
-        reserveFactor: 0,
-        borrowingEnabled: false,
-        flashloanable: false,
-        ltv: 66_00,
-        liquidationThreshold: 76_00,
-        liquidationBonus: 100_00 + 9_00,
-        debtCeiling: 0,
-        liqProtocolFee: 0
-      })
-    );
+    // verify ACRED asset config
+    _assertAssetConfig(pool, expectedAssetConfig);
 
-    // overwrite eMode 5 = ACRED GHO — ACRED is added as collateral alongside GHO
-    _assertEModeConfig(
-      pool,
-      ExpectedEModeConfig({
-        eModeCategory: 5,
-        ltv: 90_00,
-        liquidationThreshold: 92_00,
-        liquidationBonus: 100_00 + 3_00,
-        label: 'ACRED GHO',
-        collateralAssets: _toAddressArray(AaveV3HorizonEthereum.ACRED_UNDERLYING),
-        borrowableAssets: _toAddressArray(AaveV3HorizonEthereum.GHO_UNDERLYING)
-      })
-    );
+    // verify eMode 5 = ACRED GHO after execution
+    _assertEModeConfig(pool, expectedEModeConfig);
+  }
+
+  function _setExpectedConfig() internal virtual override {
+    expectedAssetConfig = ExpectedAssetConfig({
+      underlying: AaveV3HorizonEthereum.ACRED_UNDERLYING,
+      isRwa: true,
+      oracle: AaveV3HorizonEthereum.ACRED_PRICE_FEED,
+      aTokenName: 'Aave Horizon RWA ACRED',
+      aTokenSymbol: 'aHorRwaACRED',
+      variableDebtTokenName: 'Aave Horizon RWA Variable Debt ACRED',
+      variableDebtTokenSymbol: 'variableDebtHorRwaACRED',
+      supplyCap: 15_000_000,
+      borrowCap: 0,
+      reserveFactor: 0,
+      borrowingEnabled: false,
+      flashloanable: false,
+      ltv: 66_00,
+      liquidationThreshold: 76_00,
+      liquidationBonus: 100_00 + 9_00,
+      debtCeiling: 0,
+      liqProtocolFee: 0,
+      optimalUsageRatio: 99_00,
+      baseVariableBorrowRate: 0,
+      variableRateSlope1: 0,
+      variableRateSlope2: 0
+    });
+    expectedEModeConfig = ExpectedEModeConfig({
+      eModeCategory: 5,
+      ltv: 90_00,
+      liquidationThreshold: 92_00,
+      liquidationBonus: 100_00 + 3_00,
+      label: 'ACRED GHO',
+      collateralAssets: _toAddressArray(AaveV3HorizonEthereum.ACRED_UNDERLYING),
+      borrowableAssets: _toAddressArray(AaveV3HorizonEthereum.GHO_UNDERLYING)
+    });
+  }
+}
+
+/**
+ * @dev Post-execution fork test. Run after the payload has been executed on mainnet
+ *      to validate the live state matches expected config.
+ * command: FOUNDRY_PROFILE=test forge test --match-contract AaveV3Horizon_ACREDListing_20260217_PostExecution_Test -vv
+ */
+contract AaveV3Horizon_ACREDListing_20260217_PostExecution_Test is
+  AaveV3Horizon_ACREDListing_20260217_Test
+{
+  function setUp() public virtual override {
+    _setExpectedConfig();
+    vm.skip(true, 'skipping post-execution test');
+    // TODO: pin to block after on-chain execution
+    vm.createSelectFork(vm.rpcUrl('mainnet'));
+  }
+
+  function test_acredConfigPostExecution() public {
+    IPool pool = IPool(AaveV3HorizonEthereum.POOL);
+    _assertAssetConfig(pool, expectedAssetConfig);
+    _assertEModeConfig(pool, expectedEModeConfig);
   }
 }

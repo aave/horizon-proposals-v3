@@ -431,4 +431,6 @@ abstract contract ProtocolV3HorizonTestBase is
     }
     return false;
   }
+
+  function _setExpectedConfig() internal virtual;
 }

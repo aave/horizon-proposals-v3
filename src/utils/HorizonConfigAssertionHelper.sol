@@ -3,10 +3,13 @@ pragma solidity ^0.8.0;
 
 import {Test} from 'forge-std/Test.sol';
 import {console2 as console} from 'forge-std/console2.sol';
+import {IERC20} from 'aave-helpers/lib/aave-address-book/lib/aave-v3-origin/lib/forge-std/src/interfaces/IERC20.sol';
 import {IERC20Metadata} from 'aave-helpers/lib/aave-address-book/lib/aave-v3-origin/lib/solidity-utils/lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol';
 import {IPool} from 'aave-v3-origin/contracts/interfaces/IPool.sol';
 import {IAaveOracle} from 'aave-v3-origin/contracts/interfaces/IAaveOracle.sol';
+import {IACLManager} from 'aave-v3-origin/contracts/interfaces/IACLManager.sol';
 import {IPoolAddressesProvider} from 'aave-v3-origin/contracts/interfaces/IPoolAddressesProvider.sol';
+import {IDefaultInterestRateStrategyV2} from 'aave-v3-origin/contracts/interfaces/IDefaultInterestRateStrategyV2.sol';
 import {DataTypes} from 'aave-v3-origin/contracts/protocol/libraries/types/DataTypes.sol';
 import {ReserveConfiguration} from 'aave-v3-origin/contracts/protocol/libraries/configuration/ReserveConfiguration.sol';
 import {EModeConfiguration} from 'aave-v3-origin/contracts/protocol/libraries/configuration/EModeConfiguration.sol';
@@ -24,6 +27,8 @@ import {AaveV3HorizonEthereum} from 'src/utils/AaveV3HorizonEthereum.sol';
 abstract contract HorizonConfigAssertionHelper is Test {
   using ReserveConfiguration for DataTypes.ReserveConfigurationMap;
   using EModeConfiguration for uint128;
+
+  string public constant APPROVE_REVERTS = '80';
 
   bytes32 internal constant EIP1967_IMPL_SLOT =
     bytes32(uint256(keccak256('eip1967.proxy.implementation')) - 1);
@@ -46,6 +51,11 @@ abstract contract HorizonConfigAssertionHelper is Test {
     uint256 liquidationBonus;
     uint256 debtCeiling;
     uint256 liqProtocolFee;
+    // interest rate strategy params (in bps)
+    uint16 optimalUsageRatio;
+    uint32 baseVariableBorrowRate;
+    uint32 variableRateSlope1;
+    uint32 variableRateSlope2;
   }
 
   struct ExpectedEModeConfig {
@@ -60,12 +70,16 @@ abstract contract HorizonConfigAssertionHelper is Test {
 
   // ─── Per-asset config assertions ───────────────────────────────────
 
-  function _assertAssetConfig(IPool pool, ExpectedAssetConfig memory expected) internal view {
+  function _assertAssetConfig(IPool pool, ExpectedAssetConfig memory expected) internal {
     _assertReserveConfiguration(pool, expected);
     _assertAToken(pool, expected);
     _assertVariableDebtToken(pool, expected);
     _assertPriceFeed(pool, expected);
-    _assertParamRegistry(expected);
+    _assertInterestRateStrategy(expected);
+    if (expected.isRwa) {
+      _assertRwaOracleRegistry(expected.underlying);
+      _assertRwaATokenApproveReverts(pool, expected.underlying);
+    }
   }
 
   function _assertReserveConfiguration(
@@ -131,14 +145,35 @@ abstract contract HorizonConfigAssertionHelper is Test {
     assertGt(price, 0, 'oraclePrice');
   }
 
-  function _assertParamRegistry(ExpectedAssetConfig memory expected) internal view {
-    assertEq(
-      IRwaOracleParameterRegistry(AaveV3HorizonEthereum.RWA_ORACLE_PARAMS_REGISTRY).assetExists(
-        expected.underlying
-      ),
-      true,
-      'assetExists'
+  function _assertInterestRateStrategy(ExpectedAssetConfig memory expected) internal view {
+    IDefaultInterestRateStrategyV2 strategy = IDefaultInterestRateStrategyV2(
+      AaveV3HorizonEthereum.DEFAULT_INTEREST_RATE_STRATEGY
     );
+    IDefaultInterestRateStrategyV2.InterestRateData memory rateData = strategy
+      .getInterestRateDataBps(expected.underlying);
+    assertEq(rateData.optimalUsageRatio, expected.optimalUsageRatio, 'optimalUsageRatio');
+    assertEq(
+      rateData.baseVariableBorrowRate,
+      expected.baseVariableBorrowRate,
+      'baseVariableBorrowRate'
+    );
+    assertEq(rateData.variableRateSlope1, expected.variableRateSlope1, 'variableRateSlope1');
+    assertEq(rateData.variableRateSlope2, expected.variableRateSlope2, 'variableRateSlope2');
+  }
+
+  function _assertRwaOracleRegistry(address underlying) internal view {
+    assertTrue(
+      IRwaOracleParameterRegistry(AaveV3HorizonEthereum.RWA_ORACLE_PARAMS_REGISTRY).assetExists(
+        underlying
+      ),
+      'rwaOracleRegistry: asset not registered'
+    );
+  }
+
+  function _assertRwaATokenApproveReverts(IPool pool, address underlying) internal {
+    address aToken = pool.getReserveAToken(underlying);
+    vm.expectRevert(bytes(APPROVE_REVERTS));
+    IERC20(aToken).approve(makeAddr('tmpUser'), 0);
   }
 
   // ─── eMode config assertions ──────────────────────────────────────
@@ -181,10 +216,73 @@ abstract contract HorizonConfigAssertionHelper is Test {
 
   // ─── Pool-wide validations ────────────────────────────────────────
 
-  function _runHorizonValidations(IPool pool, ReserveConfig[] memory configs) internal view {
+  function _runHorizonValidations(IPool pool, ReserveConfig[] memory configs) internal {
+    _validateAccessControl(pool);
     _validateOracles(pool, configs);
     _validateATokenImplementations(configs);
+    _validateRwaOracleRegistrations(configs);
+    _validateInterestRateStrategies(configs);
     _validateConfigSanity(configs);
+  }
+
+  function _validateAccessControl(IPool pool) internal view {
+    IACLManager aclManager = IACLManager(
+      IPoolAddressesProvider(pool.ADDRESSES_PROVIDER()).getACLManager()
+    );
+
+    // HORIZON_EXECUTOR: AssetListingAdmin + RiskAdmin only (listing executor)
+    assertFalse(
+      aclManager.isPoolAdmin(AaveV3HorizonEthereum.HORIZON_EXECUTOR),
+      'VALIDATION: executor should not be pool admin'
+    );
+    assertFalse(
+      aclManager.isEmergencyAdmin(AaveV3HorizonEthereum.HORIZON_EXECUTOR),
+      'VALIDATION: executor should not be emergency admin'
+    );
+    assertTrue(
+      aclManager.isAssetListingAdmin(AaveV3HorizonEthereum.HORIZON_EXECUTOR),
+      'VALIDATION: executor should be asset listing admin'
+    );
+    assertTrue(
+      aclManager.isRiskAdmin(AaveV3HorizonEthereum.HORIZON_EXECUTOR),
+      'VALIDATION: executor should be risk admin'
+    );
+
+    // HORIZON_EMERGENCY: PoolAdmin + EmergencyAdmin only
+    assertTrue(
+      aclManager.isPoolAdmin(AaveV3HorizonEthereum.HORIZON_EMERGENCY),
+      'VALIDATION: emergency should be pool admin'
+    );
+    assertTrue(
+      aclManager.isEmergencyAdmin(AaveV3HorizonEthereum.HORIZON_EMERGENCY),
+      'VALIDATION: emergency should be emergency admin'
+    );
+    assertFalse(
+      aclManager.isAssetListingAdmin(AaveV3HorizonEthereum.HORIZON_EMERGENCY),
+      'VALIDATION: emergency should not be asset listing admin'
+    );
+    assertFalse(
+      aclManager.isRiskAdmin(AaveV3HorizonEthereum.HORIZON_EMERGENCY),
+      'VALIDATION: emergency should not be risk admin'
+    );
+
+    // HORIZON_OPS: RiskAdmin only (operational multisig)
+    assertFalse(
+      aclManager.isPoolAdmin(AaveV3HorizonEthereum.HORIZON_OPS),
+      'VALIDATION: ops should not be pool admin'
+    );
+    assertFalse(
+      aclManager.isEmergencyAdmin(AaveV3HorizonEthereum.HORIZON_OPS),
+      'VALIDATION: ops should not be emergency admin'
+    );
+    assertFalse(
+      aclManager.isAssetListingAdmin(AaveV3HorizonEthereum.HORIZON_OPS),
+      'VALIDATION: ops should not be asset listing admin'
+    );
+    assertTrue(
+      aclManager.isRiskAdmin(AaveV3HorizonEthereum.HORIZON_OPS),
+      'VALIDATION: ops should be risk admin'
+    );
   }
 
   function _validateOracles(IPool pool, ReserveConfig[] memory configs) internal view {
@@ -197,7 +295,7 @@ abstract contract HorizonConfigAssertionHelper is Test {
     }
   }
 
-  function _validateATokenImplementations(ReserveConfig[] memory configs) internal view {
+  function _validateATokenImplementations(ReserveConfig[] memory configs) internal {
     for (uint256 i; i < configs.length; i++) {
       address impl = address(uint160(uint256(vm.load(configs[i].aToken, EIP1967_IMPL_SLOT))));
       bool isRwa = impl == AaveV3HorizonEthereum.RWA_ATOKEN_IMPL;
@@ -205,6 +303,44 @@ abstract contract HorizonConfigAssertionHelper is Test {
       assertTrue(
         isRwa || isStandard,
         string.concat('VALIDATION: unknown aToken impl for ', configs[i].symbol)
+      );
+      // RWA aTokens must reject approve()
+      if (isRwa) {
+        vm.expectRevert(bytes('80'));
+        IERC20(configs[i].aToken).approve(address(1), 0);
+      }
+    }
+  }
+
+  function _validateRwaOracleRegistrations(ReserveConfig[] memory configs) internal view {
+    for (uint256 i; i < configs.length; i++) {
+      address impl = address(uint160(uint256(vm.load(configs[i].aToken, EIP1967_IMPL_SLOT))));
+      if (impl == AaveV3HorizonEthereum.RWA_ATOKEN_IMPL) {
+        assertTrue(
+          IRwaOracleParameterRegistry(AaveV3HorizonEthereum.RWA_ORACLE_PARAMS_REGISTRY).assetExists(
+            configs[i].underlying
+          ),
+          string.concat('VALIDATION: RWA not in oracle registry for ', configs[i].symbol)
+        );
+      }
+    }
+  }
+
+  function _validateInterestRateStrategies(ReserveConfig[] memory configs) internal view {
+    IDefaultInterestRateStrategyV2 strategy = IDefaultInterestRateStrategyV2(
+      AaveV3HorizonEthereum.DEFAULT_INTEREST_RATE_STRATEGY
+    );
+    for (uint256 i; i < configs.length; i++) {
+      assertEq(
+        configs[i].interestRateStrategy,
+        address(strategy),
+        string.concat('VALIDATION: unexpected IR strategy for ', configs[i].symbol)
+      );
+      IDefaultInterestRateStrategyV2.InterestRateData memory rateData = strategy
+        .getInterestRateDataBps(configs[i].underlying);
+      assertTrue(
+        rateData.optimalUsageRatio > 0,
+        string.concat('VALIDATION: zero optimalUsageRatio for ', configs[i].symbol)
       );
     }
   }
