@@ -12,9 +12,10 @@ import {EngineFlags} from 'aave-v3-origin/contracts/extensions/v3-config-engine/
  * @dev Lists ACRED (Apollo Diversified Credit Securitize Fund) as an RWA collateral asset
  *      on the Horizon pool with an ACRED/GHO eMode.
  */
-contract AaveV3Ethereum_PhaseTwoListing_20250924 is AaveV3PayloadHorizonEthereum {
+contract AaveV3Horizon_ACREDListing_20260217 is AaveV3PayloadHorizonEthereum {
   address public constant ACRED = 0x17418038ecF73BA4026c4f428547BF099706F27B;
   address public constant ACRED_PRICE_FEED = 0x60AEd7d20AC6328f7BA771aD58931c996aff30E8;
+  uint8 public constant ACRED_EMODE_CATEGORY = 5;
 
   function newListingsCustom()
     public
@@ -63,7 +64,7 @@ contract AaveV3Ethereum_PhaseTwoListing_20250924 is AaveV3PayloadHorizonEthereum
     // ACRED as collateral in eMode 1
     assetsEMode[0] = IEngine.AssetEModeUpdate({
       asset: ACRED,
-      eModeCategory: 1,
+      eModeCategory: ACRED_EMODE_CATEGORY,
       collateral: EngineFlags.ENABLED,
       borrowable: EngineFlags.DISABLED
     });
@@ -71,11 +72,31 @@ contract AaveV3Ethereum_PhaseTwoListing_20250924 is AaveV3PayloadHorizonEthereum
     // GHO as borrowable in eMode 1
     assetsEMode[1] = IEngine.AssetEModeUpdate({
       asset: AaveV3HorizonEthereum.GHO_UNDERLYING,
-      eModeCategory: 1,
+      eModeCategory: ACRED_EMODE_CATEGORY,
       collateral: EngineFlags.DISABLED,
       borrowable: EngineFlags.ENABLED
     });
 
     return assetsEMode;
+  }
+
+  function eModeCategoriesUpdates()
+    public
+    pure
+    override
+    returns (IEngine.EModeCategoryUpdate[] memory)
+  {
+    IEngine.EModeCategoryUpdate[] memory eModeCategories = new IEngine.EModeCategoryUpdate[](1);
+
+    // ACRED GHO
+    eModeCategories[0] = IEngine.EModeCategoryUpdate({
+      eModeCategory: ACRED_EMODE_CATEGORY,
+      ltv: 90_00,
+      liqThreshold: 92_00,
+      liqBonus: 3_00,
+      label: 'ACRED GHO'
+    });
+
+    return eModeCategories;
   }
 }

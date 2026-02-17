@@ -10,6 +10,7 @@ import {IPoolConfigurator} from 'aave-v3-origin/contracts/interfaces/IPoolConfig
 import {IACLManager} from 'aave-v3-origin/contracts/interfaces/IACLManager.sol';
 import {AaveV3HorizonEthereum} from './AaveV3HorizonEthereum.sol';
 import {HorizonRwaWhitelistHelper} from './HorizonRwaWhitelistHelper.sol';
+import {HorizonConfigAssertionHelper} from './HorizonConfigAssertionHelper.sol';
 
 /**
  * @dev Adapted from ProtocolV3TestBase for the Horizon market (currently at Aave v3.3).
@@ -19,7 +20,11 @@ import {HorizonRwaWhitelistHelper} from './HorizonRwaWhitelistHelper.sol';
  * - Adds helper to return all actors used in E2E test such that they may be whitelisted to hold RWA tokens.
  * - Update errors to v3.3 string format.
  */
-abstract contract ProtocolV3HorizonTestBase is ProtocolV3TestBase, HorizonRwaWhitelistHelper {
+abstract contract ProtocolV3HorizonTestBase is
+  ProtocolV3TestBase,
+  HorizonRwaWhitelistHelper,
+  HorizonConfigAssertionHelper
+{
   string public constant BORROW_CAP_EXCEEDED = '50';
   string public constant SUPPLY_CAP_EXCEEDED = '51';
 
@@ -66,6 +71,9 @@ abstract contract ProtocolV3HorizonTestBase is ProtocolV3TestBase, HorizonRwaWhi
     vm.writeJson(output, string(abi.encodePacked('./reports/', afterString, '.json')));
 
     diffReports(beforeString, afterString);
+
+    // pool-wide validations (replaces upstream seatbelt which requires PayloadsController)
+    _runHorizonValidations(pool, configAfter);
 
     configChangePlausibilityTest(configBefore, configAfter);
 

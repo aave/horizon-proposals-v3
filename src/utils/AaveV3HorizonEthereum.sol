@@ -24,6 +24,9 @@ library AaveV3HorizonEthereum {
   address internal constant REWARDS_CONTROLLER = 0x1D5D386a90CEA8AcEa9fa75389e97CF5F1AE21D3;
   address internal constant AAVE_ORACLE = 0x985BcfAB7e0f4EF2606CC5b64FC1A16311880442;
 
+  // oracle param registry
+  address public constant RWA_ORACLE_PARAMS_REGISTRY = 0x69D55D504BC9556E377b340D19818E736bbB318b;
+
   // horizon assets
   address public constant USTB_UNDERLYING = 0x43415eB6ff9DB7E26A15b704e7A3eDCe97d31C4e;
   address public constant USTB_PRICE_FEED_ADAPTER = 0x5Ae4D93B9b9626Dc3289e1Afb14b821FD3C95F44;
@@ -53,7 +56,5 @@ library AaveV3HorizonEthereum {
   address public constant RLUSD_PRICE_FEED = 0x26C46B7aD0012cA71F2298ada567dC9Af14E7f2A;
 
   address public constant ACRED_UNDERLYING = 0x17418038ecF73BA4026c4f428547BF099706F27B;
-
-  // oracle param registry
-  address public constant RWA_ORACLE_PARAMS_REGISTRY = 0x69D55D504BC9556E377b340D19818E736bbB318b;
+  address public constant ACRED_PRICE_FEED = 0x60AEd7d20AC6328f7BA771aD58931c996aff30E8;
 }
