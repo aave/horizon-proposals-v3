@@ -264,17 +264,23 @@ abstract contract ProtocolV3HorizonTestBase is
   }
 
   /**
-   * @dev Execute a Horizon payload by granting it POOL_ADMIN role and calling execute() directly.
-   * Horizon has no standard Aave governance payloads controller — it uses a multisig executor.
-   * This simulates the executor's delegatecall execution path for testing.
+   * @dev Execute a Horizon payload through the real executor path.
+   * HORIZON_EMERGENCY calls HORIZON_EXECUTOR.executeTransaction() which delegatecalls
+   * the payload. Matches the production multisig execution flow exactly.
    */
   function _executeHorizonPayload(address payload) internal {
-    address aclAdmin = IPoolAddressesProvider(AaveV3HorizonEthereum.POOL_ADDRESSES_PROVIDER)
-      .getACLAdmin();
-    vm.startPrank(aclAdmin);
-    IACLManager(AaveV3HorizonEthereum.ACL_MANAGER).addPoolAdmin(payload);
+    vm.startPrank(AaveV3HorizonEthereum.HORIZON_EMERGENCY);
+    (bool success, bytes memory resultData) = AaveV3HorizonEthereum.HORIZON_EXECUTOR.call(
+      abi.encodeWithSignature(
+        'executeTransaction(address,uint256,string,bytes,bool)',
+        payload, // target
+        0, // value
+        'execute()', // signature
+        '', // data
+        true // withDelegatecall
+      )
+    );
     vm.stopPrank();
-    (bool success, bytes memory resultData) = payload.call(abi.encodeWithSignature('execute()'));
     require(success, string(resultData));
   }
 
@@ -432,5 +438,5 @@ abstract contract ProtocolV3HorizonTestBase is
     return false;
   }
 
-  function _setExpectedConfig() internal virtual;
+  function _setExpectedConfig() internal virtual {}
 }

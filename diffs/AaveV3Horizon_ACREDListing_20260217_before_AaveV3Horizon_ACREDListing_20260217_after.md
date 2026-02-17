@@ -394,18 +394,6 @@
           "label": "Implementation slot"
         }
       }
-    },
-    "0xefd5df7b87d2dce6dd454b4240b3e0a4db562321": {
-      "label": null,
-      "contract": null,
-      "balanceDiff": null,
-      "nonceDiff": null,
-      "stateDiff": {
-        "0x9dfc34013f2697a5578fe627227cbf092b03e48663008cad18bf62ab9b8bdc7b": {
-          "previousValue": "0x0000000000000000000000000000000000000000000000000000000000000000",
-          "newValue": "0x0000000000000000000000000000000000000000000000000000000000000001"
-        }
-      }
     }
   }
 }
