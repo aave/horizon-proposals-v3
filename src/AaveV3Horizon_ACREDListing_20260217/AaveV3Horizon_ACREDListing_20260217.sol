@@ -44,7 +44,7 @@ contract AaveV3Horizon_ACREDListing_20260217 is AaveV3PayloadHorizonEthereum {
         liqThreshold: 76_00,
         liqBonus: 9_00,
         reserveFactor: EngineFlags.KEEP_CURRENT,
-        supplyCap: 15_000_000,
+        supplyCap: 32_000,
         borrowCap: 0,
         debtCeiling: 0,
         liqProtocolFee: 0

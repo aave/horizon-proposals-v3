@@ -9,7 +9,7 @@
 | decimals | 6 |
 | isActive | true |
 | isFrozen | false |
-| supplyCap | 15,000,000 ACRED |
+| supplyCap | 32,000 ACRED |
 | borrowCap | 0 ACRED |
 | debtCeiling | 0 $ [0] |
 | isSiloed | false |
@@ -156,7 +156,7 @@
         "oracleDescription": "ACRED NAV - Aave LlamaGuard",
         "oracleLatestAnswer": "109713972400",
         "reserveFactor": 0,
-        "supplyCap": 15000000,
+        "supplyCap": 32000,
         "symbol": "ACRED",
         "underlying": "0x17418038ecF73BA4026c4f428547BF099706F27B",
         "usageAsCollateralEnabled": true,
@@ -315,7 +315,7 @@
         },
         "0xe7569c1de36b7b382c11b8838312b8b7a0397157bf8b3c82731f39ca7162a47e": {
           "previousValue": "0x0000000000000000000000000000000000000000000000000000000000000000",
-          "newValue": "0x10000000000000000000000000000e4e1c0000000000000001062a941db019c8"
+          "newValue": "0x10000000000000000000000000000007d00000000000000001062a941db019c8"
         },
         "0xe7569c1de36b7b382c11b8838312b8b7a0397157bf8b3c82731f39ca7162a47f": {
           "previousValue": "0x0000000000000000000000000000000000000000000000000000000000000000",

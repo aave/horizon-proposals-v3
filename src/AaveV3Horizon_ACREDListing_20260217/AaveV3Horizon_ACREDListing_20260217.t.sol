@@ -74,7 +74,7 @@ contract AaveV3Horizon_ACREDListing_20260217_Test is ProtocolV3HorizonTestBase {
       aTokenSymbol: 'aHorRwaACRED',
       variableDebtTokenName: 'Aave Horizon RWA Variable Debt ACRED',
       variableDebtTokenSymbol: 'variableDebtHorRwaACRED',
-      supplyCap: 15_000_000,
+      supplyCap: 32_000,
       borrowCap: 0,
       reserveFactor: 0,
       borrowingEnabled: false,
