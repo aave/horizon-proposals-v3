@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import {Test} from 'forge-std/Test.sol';
+import {IERC20} from 'aave-helpers/lib/aave-address-book/lib/aave-v3-origin/lib/forge-std/src/interfaces/IERC20.sol';
 import {IPool} from 'aave-v3-origin/contracts/interfaces/IPool.sol';
 import {AaveV3HorizonEthereum} from './AaveV3HorizonEthereum.sol';
 
@@ -11,7 +12,7 @@ import {AaveV3HorizonEthereum} from './AaveV3HorizonEthereum.sol';
  *        - Superstate  (USTB, USCC) — AllowList.setEntityIdForAddress
  *        - Centrifuge  (JTRSY, JAAA) — RestrictionManager.endorse
  *        - Circle/USYC             — RolesAuthority.setUserRole
- *        - Securitize  (VBILL)  — RegistryService.addWallet
+ *        - Securitize  (VBILL, ACRED) — RegistryService.addWallet
  *
  *      Override `_whitelistRwaActors` in concrete tests to add whitelisting for
  *      newly listed assets.
@@ -33,7 +34,12 @@ abstract contract HorizonRwaWhitelistHelper is Test {
   // ── Securitize (VBILL, ACRED) ────────────────────────────────────────
   address internal constant SECURITIZE_ADMIN = 0xDA8e2d926D28a86aeE933d928357583aae5D3b85;
   string internal constant VBILL_SECURITIZE_FUND_ID = 'f27e20ca73314651b387da0aa9116f30';
-  string internal constant ACRED_SECURITIZE_FUND_ID = 'acred';
+  string internal constant ACRED_SECURITIZE_FUND_ID = '69023a78d57776eca9542d33';
+
+  // ── Whale addresses for tokens incompatible with foundry `deal` ────
+  // Securitize DS-protocol tokens store balances in an external data store,
+  // so cannot use native foundry deal. Transfer from a real holder instead.
+  address internal constant ACRED_WHALE = 0xa0759A0DFdE5395a1892aEd90eB5665698CFaa05;
 
   // ─── Orchestrator ────────────────────────────────────────────────────
 
@@ -212,5 +218,28 @@ abstract contract HorizonRwaWhitelistHelper is Test {
       require(success && abi.decode(data, (bool)), 'Securitize: addWallet ok but isWallet false');
     }
     // If addWallet reverted, the address already has a role (e.g. aToken = special wallet)
+  }
+
+  /// @dev Returns true if `token` requires tokens from whale instead of foundry's `deal`.
+  function _needsWhaleDeal(address token) internal pure returns (bool) {
+    return token == AaveV3HorizonEthereum.ACRED_UNDERLYING;
+  }
+
+  /// @dev Returns the whale address for `token`.
+  function _getWhale(address token) internal pure returns (address) {
+    if (_needsWhaleDeal(token)) {
+      return ACRED_WHALE;
+    } else {
+      revert('_getWhale: no whale configured');
+    }
+  }
+
+  /// @dev Transfers `amount` of `token` to `recipient` from a known whale.
+  function _dealRwaToken(address token, address recipient, uint256 amount) internal {
+    address whale = _getWhale(token);
+    require(IERC20(token).balanceOf(whale) >= amount, 'whale has insufficient balance');
+
+    vm.prank(whale);
+    IERC20(token).transfer(recipient, amount);
   }
 }

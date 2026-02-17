@@ -23,6 +23,21 @@ abstract contract ProtocolV3HorizonTestBase is ProtocolV3TestBase, HorizonRwaWhi
   string public constant BORROW_CAP_EXCEEDED = '50';
   string public constant SUPPLY_CAP_EXCEEDED = '51';
 
+  struct E2ETestAssetLocalVars {
+    address emodeCollateralSupplier;
+    address regularCollateralSupplier;
+    address borrower; // chosen per test asset based on eMode compatibility
+    address testAssetSupplier;
+    address liquidator;
+    uint256 collateralAssetAmount;
+    uint256 testAssetAmount;
+    uint256 snapshotAfterDeposits;
+    uint256 aTokenTotalSupply;
+    uint256 variableDebtTokenTotalSupply;
+    uint256 borrowAmount;
+    uint256 snapshotBeforeRepay;
+  }
+
   /**
    * @dev Execute a Horizon payload by granting it POOL_ADMIN role and calling execute() directly.
    * Horizon has no standard Aave governance payloads controller — it uses a multisig executor.
@@ -95,21 +110,6 @@ abstract contract ProtocolV3HorizonTestBase is ProtocolV3TestBase, HorizonRwaWhi
     }
   }
 
-  struct E2ETestAssetLocalVars {
-    address emodeCollateralSupplier;
-    address regularCollateralSupplier;
-    address borrower; // chosen per test asset based on eMode compatibility
-    address testAssetSupplier;
-    address liquidator;
-    uint256 collateralAssetAmount;
-    uint256 testAssetAmount;
-    uint256 snapshotAfterDeposits;
-    uint256 aTokenTotalSupply;
-    uint256 variableDebtTokenTotalSupply;
-    uint256 borrowAmount;
-    uint256 snapshotBeforeRepay;
-  }
-
   function e2eTestAsset_v3_3(
     IPool pool,
     ReserveConfig memory collateralConfig,
@@ -148,6 +148,10 @@ abstract contract ProtocolV3HorizonTestBase is ProtocolV3TestBase, HorizonRwaWhi
     _enableIfEMode(collateralConfig, pool, vars.emodeCollateralSupplier);
     _deposit(collateralConfig, pool, vars.emodeCollateralSupplier, vars.collateralAssetAmount);
     _deposit(collateralConfig, pool, vars.regularCollateralSupplier, vars.collateralAssetAmount);
+    // transfer from whale for tokens when foundry's `deal` doesn't work
+    if (_needsWhaleDeal(testAssetConfig.underlying)) {
+      _dealRwaToken(testAssetConfig.underlying, vars.testAssetSupplier, vars.testAssetAmount);
+    }
     _deposit(testAssetConfig, pool, vars.testAssetSupplier, vars.testAssetAmount);
 
     uint256 snapshotAfterDeposits = vm.snapshotState();
@@ -170,7 +174,7 @@ abstract contract ProtocolV3HorizonTestBase is ProtocolV3TestBase, HorizonRwaWhi
     // caps should revert when supplying slightly more
     vm.expectRevert(bytes(SUPPLY_CAP_EXCEEDED));
     vm.prank(vars.testAssetSupplier);
-    pool.deposit({
+    pool.supply({
       asset: testAssetConfig.underlying,
       amount: 11 ** testAssetConfig.decimals,
       onBehalfOf: vars.testAssetSupplier,
@@ -212,7 +216,7 @@ abstract contract ProtocolV3HorizonTestBase is ProtocolV3TestBase, HorizonRwaWhi
     vm.revertToState(snapshotAfterDeposits);
 
     _withdraw(testAssetConfig, pool, vars.testAssetSupplier, vars.testAssetAmount / 2);
-    _withdraw(testAssetConfig, pool, vars.testAssetSupplier, type(uint256).max);
+    _withdraw(testAssetConfig, pool, vars.testAssetSupplier, UINT256_MAX);
 
     vm.revertToState(snapshotAfterDeposits);
 
@@ -325,7 +329,7 @@ abstract contract ProtocolV3HorizonTestBase is ProtocolV3TestBase, HorizonRwaWhi
       pool: pool,
       liquidator: makeAddr('liquidator'),
       borrower: borrower,
-      debtToCover: type(uint256).max,
+      debtToCover: UINT256_MAX,
       receiveAToken: false
     });
 
@@ -338,7 +342,7 @@ abstract contract ProtocolV3HorizonTestBase is ProtocolV3TestBase, HorizonRwaWhi
         pool: pool,
         liquidator: makeAddr('liquidator'),
         borrower: borrower,
-        debtToCover: type(uint256).max,
+        debtToCover: UINT256_MAX,
         receiveAToken: true
       });
     }
