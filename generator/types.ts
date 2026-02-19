@@ -41,6 +41,9 @@ export const V3_POOLS = [
   'AaveV3Sonic',
   'AaveV3Soneium',
   'AaveV3InkWhitelabel',
+  'AaveV3Plasma',
+  'AaveV3Mantle',
+  'AaveV3MegaEth',
 ] as const satisfies readonly (keyof typeof addressBook)[];
 
 export const POOLS = [
