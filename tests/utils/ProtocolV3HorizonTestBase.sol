@@ -8,9 +8,9 @@ import {ProtocolV3TestBase, ReserveConfig} from 'aave-helpers/src/ProtocolV3Test
 import {IPoolAddressesProvider} from 'aave-v3-origin/contracts/interfaces/IPoolAddressesProvider.sol';
 import {IPoolConfigurator} from 'aave-v3-origin/contracts/interfaces/IPoolConfigurator.sol';
 import {IACLManager} from 'aave-v3-origin/contracts/interfaces/IACLManager.sol';
-import {AaveV3HorizonEthereum} from './AaveV3HorizonEthereum.sol';
-import {HorizonRwaWhitelistHelper} from './HorizonRwaWhitelistHelper.sol';
-import {HorizonConfigAssertionHelper} from './HorizonConfigAssertionHelper.sol';
+import {AaveV3HorizonEthereum} from 'src/utils/AaveV3HorizonEthereum.sol';
+import {HorizonRwaWhitelistHelper} from 'src/utils/HorizonRwaWhitelistHelper.sol';
+import {HorizonConfigAssertionHelper} from 'tests/utils/HorizonConfigAssertionHelper.sol';
 
 /**
  * @dev Adapted from ProtocolV3TestBase for the Horizon market (currently at Aave v3.3).
@@ -25,6 +25,7 @@ abstract contract ProtocolV3HorizonTestBase is
   HorizonRwaWhitelistHelper,
   HorizonConfigAssertionHelper
 {
+  string public constant BORROWING_NOT_ENABLED = '30';
   string public constant BORROW_CAP_EXCEEDED = '50';
   string public constant SUPPLY_CAP_EXCEEDED = '51';
 
@@ -77,12 +78,27 @@ abstract contract ProtocolV3HorizonTestBase is
 
     configChangePlausibilityTest(configBefore, configAfter);
 
-    // whitelist E2E actors on RWA compliance systems before running E2E
+    // whitelist E2E actors + aTokens on RWA compliance systems before running E2E
     _initTestActors();
-    _whitelistRwaActors(pool, _testActorsArray());
+    _whitelistRwaActors({pool: pool, actors: _testActorsArray(), whitelistPoolContracts: true});
 
     e2eTest_v3_3(pool);
     return (configBefore, configAfter);
+  }
+
+  /**
+   * @dev Post-execution test suite. Forks after the payload has already been executed
+   *      on mainnet and validates live state + runs full E2E without executing a payload.
+   *      Skips aToken whitelisting since they are already whitelisted on mainnet.
+   */
+  function defaultTest_v3_3_postExecution(IPool pool) public {
+    ReserveConfig[] memory configs = _getReservesConfigs(pool);
+    _runHorizonValidations(pool, configs);
+
+    _initTestActors();
+    _whitelistRwaActors({pool: pool, actors: _testActorsArray(), whitelistPoolContracts: false});
+
+    e2eTest_v3_3(pool);
   }
 
   /**
@@ -149,16 +165,15 @@ abstract contract ProtocolV3HorizonTestBase is
     vars.aTokenTotalSupply = IERC20(testAssetConfig.aToken).totalSupply();
     vars.variableDebtTokenTotalSupply = IERC20(testAssetConfig.variableDebtToken).totalSupply();
 
+    uint256 borrowCap = vars.variableDebtTokenTotalSupply / 10 ** testAssetConfig.decimals + 1;
+
     vm.prank(addressesProvider.getACLAdmin());
     poolConfigurator.setSupplyCap(
       testAssetConfig.underlying,
       vars.aTokenTotalSupply / 10 ** testAssetConfig.decimals + 1
     );
     vm.prank(addressesProvider.getACLAdmin());
-    poolConfigurator.setBorrowCap(
-      testAssetConfig.underlying,
-      vars.variableDebtTokenTotalSupply / 10 ** testAssetConfig.decimals + 1
-    );
+    poolConfigurator.setBorrowCap(testAssetConfig.underlying, borrowCap);
 
     // caps should revert when supplying slightly more
     vm.expectRevert(bytes(SUPPLY_CAP_EXCEEDED));
@@ -170,6 +185,7 @@ abstract contract ProtocolV3HorizonTestBase is
       referralCode: 0
     });
     if (testAssetConfig.borrowingEnabled) {
+      // enough to exceed borrow cap
       vars.borrowAmount = 11 ** testAssetConfig.decimals;
 
       if (vars.aTokenTotalSupply < vars.borrowAmount) {
@@ -369,6 +385,17 @@ abstract contract ProtocolV3HorizonTestBase is
         borrower: borrower,
         debtToCover: UINT256_MAX,
         receiveAToken: true
+      });
+    } else {
+      // attempting to borrow RWA should revert (borrowing disabled)
+      vm.expectRevert(bytes(BORROWING_NOT_ENABLED));
+      vm.prank(borrower);
+      pool.borrow({
+        asset: collateralConfig.underlying,
+        amount: 1,
+        interestRateMode: 2,
+        referralCode: 0,
+        onBehalfOf: borrower
       });
     }
   }

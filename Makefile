@@ -11,13 +11,13 @@ test   :; forge test -vvv
 
 test-contract :; forge test --match-contract ${filter} -vv
 
-# Deploys payload to list ACRED asset. `make deploy-acred dry=false CHAIN=mainnet ACCOUNT=<account>`
+# Deploys payload to list ACRED asset. `make deploy-acred`
 deploy-acred :; 
 	FOUNDRY_PROFILE=${CHAIN} forge script src/AaveV3Horizon_ACREDListing_20260217/ACREDListing_20260217.s.sol:DeployEthereum \
 		--rpc-url ${CHAIN} --account ${ACCOUNT} --slow --gas-estimate-multiplier 150 \
 		--chain ${CHAIN} --verifier-url ${VERIFIER_URL} \
 		--sig "run()" \
-		$(if ${dry},, --broadcast --verify) \
+		$(if ${DRY},, --broadcast --verify) \
 
 # Utilities
 download :; cast etherscan-source --chain ${chain} -d src/etherscan/${chain}_${address} ${address}

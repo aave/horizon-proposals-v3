@@ -22,10 +22,6 @@ out = 'out/prague'
 evm_version = 'prague'
 cache_path = 'cache/prague'
 
-[profile.mainnet]
-evm_version = 'shanghai'
-cache_path = 'cache/shanghai'
-
 [profile.deploy]
 out = 'out/shanghai'
 evm_version = 'shanghai'

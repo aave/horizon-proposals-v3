@@ -9,7 +9,7 @@
 | decimals | 6 |
 | isActive | true |
 | isFrozen | false |
-| supplyCap | 32,000 ACRED |
+| supplyCap | 30,000 ACRED |
 | borrowCap | 0 ACRED |
 | debtCeiling | 0 $ [0] |
 | isSiloed | false |
@@ -55,24 +55,24 @@
 
 
 
-### EMode: (id: 3)
+### EMode: ACRED GHO(id: 3)
 
+| description | value before | value after |
+| --- | --- | --- |
+| eMode.label | - | ACRED GHO |
+| eMode.ltv | 72 % | 68 % |
+| eMode.liquidationThreshold | 79 % | 78 % |
+| eMode.liquidationBonus | 7.5 % | 9 % |
+| eMode.borrowableBitmap |  | GHO |
+| eMode.collateralBitmap |  | ACRED |
 
 
 ### EMode: USCC GHO(id: 4)
 
 
 
-### EMode: ACRED GHO(id: 5)
+### EMode: (id: 5)
 
-| description | value before | value after |
-| --- | --- | --- |
-| eMode.label | - | ACRED GHO |
-| eMode.ltv | 85 % | 90 % |
-| eMode.liquidationThreshold | 89 % | 92 % |
-| eMode.liquidationBonus | 3.1 % | 3 % |
-| eMode.borrowableBitmap |  | GHO |
-| eMode.collateralBitmap |  | ACRED |
 
 
 ### EMode: USYC GHO(id: 6)
@@ -100,7 +100,7 @@
 ```json
 {
   "eModes": {
-    "5": {
+    "3": {
       "borrowableBitmap": {
         "from": "0",
         "to": "1"
@@ -114,16 +114,16 @@
         "to": "ACRED GHO"
       },
       "liquidationBonus": {
-        "from": 10310,
-        "to": 10300
+        "from": 10750,
+        "to": 10900
       },
       "liquidationThreshold": {
-        "from": 8900,
-        "to": 9200
+        "from": 7900,
+        "to": 7800
       },
       "ltv": {
-        "from": 8500,
-        "to": 9000
+        "from": 7200,
+        "to": 6800
       }
     }
   },
@@ -156,7 +156,7 @@
         "oracleDescription": "ACRED NAV - Aave LlamaGuard",
         "oracleLatestAnswer": "109713972400",
         "reserveFactor": 0,
-        "supplyCap": 32000,
+        "supplyCap": 30000,
         "symbol": "ACRED",
         "underlying": "0x17418038ecF73BA4026c4f428547BF099706F27B",
         "usageAsCollateralEnabled": true,
@@ -297,25 +297,25 @@
           "previousValue": "0x0000000000000000000000000000000000000000000000090000000000000000",
           "newValue": "0x00000000000000000000000000000000000000000000000a0000000000000000"
         },
-        "0x50039cf134a124858bd88bbc9225ec3c537b89a0e9237ce39fe1813e6edf8257": {
-          "previousValue": "0x0000000000000000000000000000000000000000000000000000284622c42134",
-          "newValue": "0x0000000000000000000000000000000000000000000000000200283c23f02328"
-        },
-        "0x50039cf134a124858bd88bbc9225ec3c537b89a0e9237ce39fe1813e6edf8258": {
-          "previousValue": "0x0000000000000000000000000000000000000000000000000000000000000000",
-          "newValue": "0x41435245442047484f0000000000000000000000000000000000000000000012"
-        },
-        "0x50039cf134a124858bd88bbc9225ec3c537b89a0e9237ce39fe1813e6edf8259": {
-          "previousValue": "0x0000000000000000000000000000000000000000000000000000000000000000",
-          "newValue": "0x0000000000000000000000000000000000000000000000000000000000000001"
-        },
         "0x748ad6d0c5a24a04515706b6da6a7b0cb9e1a9408b9f3a5672a42f933d02d13e": {
           "previousValue": "0x0000000000000000000000000000000000000000000000000000000000000000",
           "newValue": "0x00000000000000000000000017418038ecf73ba4026c4f428547bf099706f27b"
         },
+        "0x81d0999fde243adcc41b7fa1be5cea14f789e3a6065b815ac58f4bc0838c3155": {
+          "previousValue": "0x000000000000000000000000000000000000000000000000000029fe1edc1c20",
+          "newValue": "0x00000000000000000000000000000000000000000000000002002a941e781a90"
+        },
+        "0x81d0999fde243adcc41b7fa1be5cea14f789e3a6065b815ac58f4bc0838c3156": {
+          "previousValue": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "newValue": "0x41435245442047484f0000000000000000000000000000000000000000000012"
+        },
+        "0x81d0999fde243adcc41b7fa1be5cea14f789e3a6065b815ac58f4bc0838c3157": {
+          "previousValue": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "newValue": "0x0000000000000000000000000000000000000000000000000000000000000001"
+        },
         "0xe7569c1de36b7b382c11b8838312b8b7a0397157bf8b3c82731f39ca7162a47e": {
           "previousValue": "0x0000000000000000000000000000000000000000000000000000000000000000",
-          "newValue": "0x10000000000000000000000000000007d00000000000000001062a941db019c8"
+          "newValue": "0x10000000000000000000000000000007530000000000000001062a941db019c8"
         },
         "0xe7569c1de36b7b382c11b8838312b8b7a0397157bf8b3c82731f39ca7162a47f": {
           "previousValue": "0x0000000000000000000000000000000000000000000000000000000000000000",

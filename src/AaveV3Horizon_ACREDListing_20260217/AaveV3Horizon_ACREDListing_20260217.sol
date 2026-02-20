@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {AaveV3HorizonEthereum} from '../utils/AaveV3HorizonEthereum.sol';
-import {AaveV3PayloadHorizonEthereum} from '../utils/AaveV3PayloadHorizonEthereum.sol';
+import {AaveV3HorizonEthereum} from 'src/utils/AaveV3HorizonEthereum.sol';
+import {AaveV3PayloadHorizonEthereum} from 'src/utils/AaveV3PayloadHorizonEthereum.sol';
 import {IAaveV3ConfigEngine as IEngine} from 'aave-v3-origin/contracts/extensions/v3-config-engine/IAaveV3ConfigEngine.sol';
 import {EngineFlags} from 'aave-v3-origin/contracts/extensions/v3-config-engine/EngineFlags.sol';
 
@@ -15,7 +15,7 @@ import {EngineFlags} from 'aave-v3-origin/contracts/extensions/v3-config-engine/
 contract AaveV3Horizon_ACREDListing_20260217 is AaveV3PayloadHorizonEthereum {
   address public constant ACRED = 0x17418038ecF73BA4026c4f428547BF099706F27B;
   address public constant ACRED_PRICE_FEED = 0x60AEd7d20AC6328f7BA771aD58931c996aff30E8;
-  uint8 public constant ACRED_EMODE_CATEGORY = 5;
+  uint8 public constant ACRED_EMODE_CATEGORY = 3;
 
   function newListingsCustom()
     public
@@ -30,12 +30,7 @@ contract AaveV3Horizon_ACREDListing_20260217 is AaveV3PayloadHorizonEthereum {
         asset: ACRED,
         assetSymbol: 'ACRED',
         priceFeed: ACRED_PRICE_FEED,
-        rateStrategyParams: IEngine.InterestRateInputData({
-          optimalUsageRatio: 99_00,
-          baseVariableBorrowRate: 0,
-          variableRateSlope1: 0,
-          variableRateSlope2: 0
-        }),
+        rateStrategyParams: AaveV3HorizonEthereum.defaultRwaInterestRateInputData(),
         enabledToBorrow: EngineFlags.DISABLED,
         borrowableInIsolation: EngineFlags.DISABLED,
         withSiloedBorrowing: EngineFlags.DISABLED,
@@ -44,7 +39,7 @@ contract AaveV3Horizon_ACREDListing_20260217 is AaveV3PayloadHorizonEthereum {
         liqThreshold: 76_00,
         liqBonus: 9_00,
         reserveFactor: EngineFlags.KEEP_CURRENT,
-        supplyCap: 32_000,
+        supplyCap: 30_000,
         borrowCap: 0,
         debtCeiling: 0,
         liqProtocolFee: 0
@@ -91,9 +86,9 @@ contract AaveV3Horizon_ACREDListing_20260217 is AaveV3PayloadHorizonEthereum {
     // ACRED GHO
     eModeCategories[0] = IEngine.EModeCategoryUpdate({
       eModeCategory: ACRED_EMODE_CATEGORY,
-      ltv: 90_00,
-      liqThreshold: 92_00,
-      liqBonus: 3_00,
+      ltv: 68_00,
+      liqThreshold: 78_00,
+      liqBonus: 9_00,
       label: 'ACRED GHO'
     });
 

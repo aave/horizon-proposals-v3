@@ -47,41 +47,53 @@ abstract contract HorizonRwaWhitelistHelper is Test {
    * @dev Whitelists all E2E test actors on every known RWA compliance system.
    *      Override in test contracts to add whitelisting for newly listed assets.
    */
-  function _whitelistRwaActors(IPool pool, address[] memory actors) internal virtual {
+  function _whitelistRwaActors(
+    IPool pool,
+    address[] memory actors,
+    bool whitelistPoolContracts
+  ) internal virtual {
     // Superstate (USTB, USCC)
-    _whitelistSuperstateRwa(pool.getReserveAToken(AaveV3HorizonEthereum.USTB_UNDERLYING));
-    _whitelistSuperstateRwa(pool.getReserveAToken(AaveV3HorizonEthereum.USCC_UNDERLYING));
+    if (whitelistPoolContracts) {
+      _whitelistSuperstateRwa(pool.getReserveAToken(AaveV3HorizonEthereum.USTB_UNDERLYING));
+      _whitelistSuperstateRwa(pool.getReserveAToken(AaveV3HorizonEthereum.USCC_UNDERLYING));
+    }
     for (uint256 i; i < actors.length; i++) {
       _whitelistSuperstateRwa(actors[i]);
     }
 
     // Circle (USYC) — msg.sender in transferFrom must also be whitelisted
-    _whitelistUsycRwa(pool.getReserveAToken(AaveV3HorizonEthereum.USYC_UNDERLYING));
-    _whitelistUsycRwa(address(pool));
+    if (whitelistPoolContracts) {
+      _whitelistUsycRwa(pool.getReserveAToken(AaveV3HorizonEthereum.USYC_UNDERLYING));
+      _whitelistUsycRwa(address(pool));
+    }
     for (uint256 i; i < actors.length; i++) {
       _whitelistUsycRwa(actors[i]);
     }
 
     // Centrifuge (JTRSY, JAAA)
-    _whitelistCentrifugeRwa(pool.getReserveAToken(AaveV3HorizonEthereum.JTRSY_UNDERLYING));
-    _whitelistCentrifugeRwa(pool.getReserveAToken(AaveV3HorizonEthereum.JAAA_UNDERLYING));
+    if (whitelistPoolContracts) {
+      _whitelistCentrifugeRwa(pool.getReserveAToken(AaveV3HorizonEthereum.JTRSY_UNDERLYING));
+      _whitelistCentrifugeRwa(pool.getReserveAToken(AaveV3HorizonEthereum.JAAA_UNDERLYING));
+    }
     for (uint256 i; i < actors.length; i++) {
       _whitelistCentrifugeRwa(actors[i]);
     }
 
     // Securitize (VBILL)
-    _whitelistVbillRwa(pool.getReserveAToken(AaveV3HorizonEthereum.VBILL_UNDERLYING));
+    if (whitelistPoolContracts) {
+      _whitelistVbillRwa(pool.getReserveAToken(AaveV3HorizonEthereum.VBILL_UNDERLYING));
+    }
     for (uint256 i; i < actors.length; i++) {
       _whitelistVbillRwa(actors[i]);
     }
 
     // Securitize (ACRED) — only if listed (aToken exists)
     address aAcred = pool.getReserveAToken(AaveV3HorizonEthereum.ACRED_UNDERLYING);
-    if (aAcred != address(0)) {
+    if (whitelistPoolContracts) {
       _whitelistAcredRwa(aAcred);
-      for (uint256 i; i < actors.length; i++) {
-        _whitelistAcredRwa(actors[i]);
-      }
+    }
+    for (uint256 i; i < actors.length; i++) {
+      _whitelistAcredRwa(actors[i]);
     }
   }
 

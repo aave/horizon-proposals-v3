@@ -3,10 +3,13 @@ pragma solidity ^0.8.0;
 
 import {Test} from 'forge-std/Test.sol';
 import {console2 as console} from 'forge-std/console2.sol';
+
+import {AggregatorInterface} from 'aave-helpers/lib/aave-address-book/lib/aave-v3-origin/src/contracts/dependencies/chainlink/AggregatorInterface.sol';
 import {IERC20} from 'aave-helpers/lib/aave-address-book/lib/aave-v3-origin/lib/forge-std/src/interfaces/IERC20.sol';
 import {IERC20Metadata} from 'aave-helpers/lib/aave-address-book/lib/aave-v3-origin/lib/solidity-utils/lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol';
 import {IPool} from 'aave-v3-origin/contracts/interfaces/IPool.sol';
 import {IAaveOracle} from 'aave-v3-origin/contracts/interfaces/IAaveOracle.sol';
+import {IPriceOracleGetter} from 'aave-v3-origin/contracts/interfaces/IPriceOracleGetter.sol';
 import {IACLManager} from 'aave-v3-origin/contracts/interfaces/IACLManager.sol';
 import {IPoolAddressesProvider} from 'aave-v3-origin/contracts/interfaces/IPoolAddressesProvider.sol';
 import {IDefaultInterestRateStrategyV2} from 'aave-v3-origin/contracts/interfaces/IDefaultInterestRateStrategyV2.sol';
@@ -52,10 +55,7 @@ abstract contract HorizonConfigAssertionHelper is Test {
     uint256 debtCeiling;
     uint256 liqProtocolFee;
     // interest rate strategy params (in bps)
-    uint16 optimalUsageRatio;
-    uint32 baseVariableBorrowRate;
-    uint32 variableRateSlope1;
-    uint32 variableRateSlope2;
+    IDefaultInterestRateStrategyV2.InterestRateData rateData;
   }
 
   struct ExpectedEModeConfig {
@@ -80,6 +80,10 @@ abstract contract HorizonConfigAssertionHelper is Test {
       _assertRwaOracleRegistry(expected.underlying);
       _assertRwaATokenApproveReverts(pool, expected.underlying);
     }
+
+    // full struct encode comparison sanity check
+    ExpectedAssetConfig memory actual = _readAssetConfig(pool, expected.underlying);
+    assertEq(abi.encode(actual), abi.encode(expected), 'asset config: full struct mismatch');
   }
 
   function _assertReserveConfiguration(
@@ -102,6 +106,11 @@ abstract contract HorizonConfigAssertionHelper is Test {
     assertEq(config.getDebtCeiling(), expected.debtCeiling, 'debtCeiling');
     assertEq(config.getLiquidationProtocolFee(), expected.liqProtocolFee, 'liqProtocolFee');
     assertEq(config.getPaused(), false, 'paused');
+    assertEq(
+      abi.encode(config),
+      abi.encode(_toConfigMap(pool, expected)),
+      'reserve config bitmap mismatch'
+    );
   }
 
   function _assertAToken(IPool pool, ExpectedAssetConfig memory expected) internal view {
@@ -143,6 +152,7 @@ abstract contract HorizonConfigAssertionHelper is Test {
 
     uint256 price = oracle.getAssetPrice(expected.underlying);
     assertGt(price, 0, 'oraclePrice');
+    assertEq(AggregatorInterface(source).decimals(), 8, 'oracleDecimals');
   }
 
   function _assertInterestRateStrategy(ExpectedAssetConfig memory expected) internal view {
@@ -151,14 +161,27 @@ abstract contract HorizonConfigAssertionHelper is Test {
     );
     IDefaultInterestRateStrategyV2.InterestRateData memory rateData = strategy
       .getInterestRateDataBps(expected.underlying);
-    assertEq(rateData.optimalUsageRatio, expected.optimalUsageRatio, 'optimalUsageRatio');
+    assertEq(rateData.optimalUsageRatio, expected.rateData.optimalUsageRatio, 'optimalUsageRatio');
     assertEq(
       rateData.baseVariableBorrowRate,
-      expected.baseVariableBorrowRate,
+      expected.rateData.baseVariableBorrowRate,
       'baseVariableBorrowRate'
     );
-    assertEq(rateData.variableRateSlope1, expected.variableRateSlope1, 'variableRateSlope1');
-    assertEq(rateData.variableRateSlope2, expected.variableRateSlope2, 'variableRateSlope2');
+    assertEq(
+      rateData.variableRateSlope1,
+      expected.rateData.variableRateSlope1,
+      'variableRateSlope1'
+    );
+    assertEq(
+      rateData.variableRateSlope2,
+      expected.rateData.variableRateSlope2,
+      'variableRateSlope2'
+    );
+    assertEq(
+      abi.encode(rateData),
+      abi.encode(expected.rateData),
+      'interestRateData: struct mismatch'
+    );
   }
 
   function _assertRwaOracleRegistry(address underlying) internal view {
@@ -212,6 +235,14 @@ abstract contract HorizonConfigAssertionHelper is Test {
       expectedBorrowableBitmap = expectedBorrowableBitmap.setReserveBitmapBit(reserveId, true);
     }
     assertEq(borrowableBitmap, expectedBorrowableBitmap, 'emode.borrowableBitmap');
+
+    // encode comparison for scalar eMode fields
+    DataTypes.CollateralConfig memory expectedCC = DataTypes.CollateralConfig({
+      ltv: uint16(expected.ltv),
+      liquidationThreshold: uint16(expected.liquidationThreshold),
+      liquidationBonus: uint16(expected.liquidationBonus)
+    });
+    assertEq(abi.encode(cc), abi.encode(expectedCC), 'emode: collateral config struct mismatch');
   }
 
   // ─── Pool-wide validations ────────────────────────────────────────
@@ -354,6 +385,74 @@ abstract contract HorizonConfigAssertionHelper is Test {
         );
       }
     }
+  }
+
+  // ─── Read on-chain config into struct ────────────────────────────
+
+  function _readAssetConfig(
+    IPool pool,
+    address underlying
+  ) internal view returns (ExpectedAssetConfig memory c) {
+    c.underlying = underlying;
+
+    // aToken
+    address aToken = pool.getReserveAToken(underlying);
+    c.aTokenName = IERC20Metadata(aToken).name();
+    c.aTokenSymbol = IERC20Metadata(aToken).symbol();
+    address impl = address(uint160(uint256(vm.load(aToken, EIP1967_IMPL_SLOT))));
+    c.isRwa = (impl == AaveV3HorizonEthereum.RWA_ATOKEN_IMPL);
+
+    // variable debt token
+    address vDebt = pool.getReserveVariableDebtToken(underlying);
+    c.variableDebtTokenName = IERC20Metadata(vDebt).name();
+    c.variableDebtTokenSymbol = IERC20Metadata(vDebt).symbol();
+
+    // oracle
+    IAaveOracle oracle = IAaveOracle(
+      IPoolAddressesProvider(pool.ADDRESSES_PROVIDER()).getPriceOracle()
+    );
+    c.oracle = oracle.getSourceOfAsset(underlying);
+
+    // config map
+    DataTypes.ReserveConfigurationMap memory config = pool.getConfiguration(underlying);
+    c.supplyCap = config.getSupplyCap();
+    c.borrowCap = config.getBorrowCap();
+    c.borrowingEnabled = config.getBorrowingEnabled();
+    c.flashloanable = config.getFlashLoanEnabled();
+    c.reserveFactor = config.getReserveFactor();
+    c.ltv = config.getLtv();
+    c.liquidationThreshold = config.getLiquidationThreshold();
+    c.liquidationBonus = config.getLiquidationBonus();
+    c.debtCeiling = config.getDebtCeiling();
+    c.liqProtocolFee = config.getLiquidationProtocolFee();
+
+    // rate data
+    IDefaultInterestRateStrategyV2 strategy = IDefaultInterestRateStrategyV2(
+      AaveV3HorizonEthereum.DEFAULT_INTEREST_RATE_STRATEGY
+    );
+    c.rateData = strategy.getInterestRateDataBps(underlying);
+  }
+
+  /**
+   * @dev Reconstructs a ReserveConfigurationMap from expected values.
+   *      Protocol-set fields (decimals, active, frozen, etc.) are copied from on-chain
+   *      so the comparison isolates proposal-controlled fields.
+   */
+  function _toConfigMap(
+    IPool pool,
+    ExpectedAssetConfig memory expected
+  ) internal view returns (DataTypes.ReserveConfigurationMap memory map) {
+    map = pool.getConfiguration(expected.underlying);
+    map.setLtv(expected.ltv);
+    map.setLiquidationThreshold(expected.liquidationThreshold);
+    map.setLiquidationBonus(expected.liquidationBonus);
+    map.setBorrowingEnabled(expected.borrowingEnabled);
+    map.setFlashLoanEnabled(expected.flashloanable);
+    map.setReserveFactor(expected.reserveFactor);
+    map.setBorrowCap(expected.borrowCap);
+    map.setSupplyCap(expected.supplyCap);
+    map.setDebtCeiling(expected.debtCeiling);
+    map.setLiquidationProtocolFee(expected.liqProtocolFee);
   }
 
   // ─── Helpers ──────────────────────────────────────────────────────

@@ -2,9 +2,10 @@
 pragma solidity ^0.8.0;
 
 import {IPool} from 'aave-v3-origin/contracts/interfaces/IPool.sol';
+import {IDefaultInterestRateStrategyV2} from 'aave-v3-origin/contracts/interfaces/IDefaultInterestRateStrategyV2.sol';
 import {AaveV3HorizonEthereum} from 'src/utils/AaveV3HorizonEthereum.sol';
-import {ProtocolV3HorizonTestBase, ReserveConfig} from 'src/utils/ProtocolV3HorizonTestBase.sol';
-import {HorizonConfigAssertionHelper} from 'src/utils/HorizonConfigAssertionHelper.sol';
+import {ProtocolV3HorizonTestBase, ReserveConfig} from 'tests/utils/ProtocolV3HorizonTestBase.sol';
+import {HorizonConfigAssertionHelper} from 'tests/utils/HorizonConfigAssertionHelper.sol';
 import {AaveV3Horizon_ACREDListing_20260217} from 'src/AaveV3Horizon_ACREDListing_20260217/AaveV3Horizon_ACREDListing_20260217.sol';
 
 /**
@@ -27,7 +28,7 @@ contract AaveV3Horizon_ACREDListing_20260217_Test is ProtocolV3HorizonTestBase {
   /**
    * @dev executes the generic test suite including e2e and config snapshots
    */
-  function test_defaultProposalExecution() public {
+  function test_defaultProposalExecution() public virtual {
     defaultTest_v3_3(
       'AaveV3Horizon_ACREDListing_20260217',
       IPool(AaveV3HorizonEthereum.POOL),
@@ -41,14 +42,14 @@ contract AaveV3Horizon_ACREDListing_20260217_Test is ProtocolV3HorizonTestBase {
   function test_acredConfig() public {
     IPool pool = IPool(AaveV3HorizonEthereum.POOL);
 
-    // check eMode 5 before execution (pool default values, no label/assets)
+    // check eMode 3 before execution (has config values but no assets assigned)
     _assertEModeConfig(
       pool,
       ExpectedEModeConfig({
-        eModeCategory: 5,
-        ltv: 85_00,
-        liquidationThreshold: 89_00,
-        liquidationBonus: 100_00 + 3_10,
+        eModeCategory: 3,
+        ltv: 72_00,
+        liquidationThreshold: 79_00,
+        liquidationBonus: 100_00 + 7_50,
         label: '',
         collateralAssets: new address[](0),
         borrowableAssets: new address[](0)
@@ -61,7 +62,7 @@ contract AaveV3Horizon_ACREDListing_20260217_Test is ProtocolV3HorizonTestBase {
     // verify ACRED asset config
     _assertAssetConfig(pool, expectedAssetConfig);
 
-    // verify eMode 5 = ACRED GHO after execution
+    // verify eMode 3 = ACRED GHO after execution
     _assertEModeConfig(pool, expectedEModeConfig);
   }
 
@@ -74,7 +75,7 @@ contract AaveV3Horizon_ACREDListing_20260217_Test is ProtocolV3HorizonTestBase {
       aTokenSymbol: 'aHorRwaACRED',
       variableDebtTokenName: 'Aave Horizon RWA Variable Debt ACRED',
       variableDebtTokenSymbol: 'variableDebtHorRwaACRED',
-      supplyCap: 32_000,
+      supplyCap: 30_000,
       borrowCap: 0,
       reserveFactor: 0,
       borrowingEnabled: false,
@@ -84,16 +85,18 @@ contract AaveV3Horizon_ACREDListing_20260217_Test is ProtocolV3HorizonTestBase {
       liquidationBonus: 100_00 + 9_00,
       debtCeiling: 0,
       liqProtocolFee: 0,
-      optimalUsageRatio: 99_00,
-      baseVariableBorrowRate: 0,
-      variableRateSlope1: 0,
-      variableRateSlope2: 0
+      rateData: IDefaultInterestRateStrategyV2.InterestRateData({
+        optimalUsageRatio: 99_00,
+        baseVariableBorrowRate: 0,
+        variableRateSlope1: 0,
+        variableRateSlope2: 0
+      })
     });
     expectedEModeConfig = ExpectedEModeConfig({
-      eModeCategory: 5,
-      ltv: 90_00,
-      liquidationThreshold: 92_00,
-      liquidationBonus: 100_00 + 3_00,
+      eModeCategory: 3,
+      ltv: 68_00,
+      liquidationThreshold: 78_00,
+      liquidationBonus: 100_00 + 9_00,
       label: 'ACRED GHO',
       collateralAssets: _toAddressArray(AaveV3HorizonEthereum.ACRED_UNDERLYING),
       borrowableAssets: _toAddressArray(AaveV3HorizonEthereum.GHO_UNDERLYING)
@@ -103,7 +106,7 @@ contract AaveV3Horizon_ACREDListing_20260217_Test is ProtocolV3HorizonTestBase {
 
 /**
  * @dev Post-execution fork test. Run after the payload has been executed on mainnet
- *      to validate the live state matches expected config.
+ *      to validate the live state matches expected config and run full E2E.
  * command: FOUNDRY_PROFILE=test forge test --match-contract AaveV3Horizon_ACREDListing_20260217_PostExecution_Test -vv
  */
 contract AaveV3Horizon_ACREDListing_20260217_PostExecution_Test is
@@ -116,9 +119,16 @@ contract AaveV3Horizon_ACREDListing_20260217_PostExecution_Test is
     vm.createSelectFork(vm.rpcUrl('mainnet'));
   }
 
+  function test_defaultPostExecution() public {
+    defaultTest_v3_3_postExecution(IPool(AaveV3HorizonEthereum.POOL));
+  }
+
   function test_acredConfigPostExecution() public {
     IPool pool = IPool(AaveV3HorizonEthereum.POOL);
     _assertAssetConfig(pool, expectedAssetConfig);
     _assertEModeConfig(pool, expectedEModeConfig);
   }
+
+  // no payload to execute post-deployment
+  function test_defaultProposalExecution() public override {}
 }

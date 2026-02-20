@@ -1,7 +1,23 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import {IAaveV3ConfigEngine as IEngine} from 'aave-v3-origin/contracts/extensions/v3-config-engine/IAaveV3ConfigEngine.sol';
+
 library AaveV3HorizonEthereum {
+  function defaultRwaInterestRateInputData()
+    internal
+    pure
+    returns (IEngine.InterestRateInputData memory)
+  {
+    return
+      IEngine.InterestRateInputData({
+        optimalUsageRatio: 99_00,
+        baseVariableBorrowRate: 0,
+        variableRateSlope1: 0,
+        variableRateSlope2: 0
+      });
+  }
+
   // executor roles
   address public constant HORIZON_OPS = 0xE6ec1f0Ae6Cd023bd0a9B4d0253BDC755103253c;
   address public constant HORIZON_EMERGENCY = 0x13B57382c36BAB566E75C72303622AF29E27e1d3;
