@@ -323,6 +323,51 @@ abstract contract HorizonConfigAssertionHelper is Test {
     for (uint256 i; i < configs.length; i++) {
       uint256 price = oracle.getAssetPrice(configs[i].underlying);
       assertTrue(price > 0, string.concat('VALIDATION: zero oracle price for ', configs[i].symbol));
+      address source = oracle.getSourceOfAsset(configs[i].underlying);
+      assertEq(
+        AggregatorInterface(source).decimals(),
+        8,
+        string.concat('VALIDATION: unexpected oracle decimals for ', configs[i].symbol)
+      );
+      address expectedFeed = _expectedPriceFeed(configs[i].underlying);
+      assertEq(
+        source,
+        expectedFeed,
+        string.concat('VALIDATION: oracle source mismatch for ', configs[i].symbol)
+      );
+    }
+  }
+
+  function _expectedPriceFeed(address underlying) internal pure returns (address) {
+    if (underlying == AaveV3HorizonEthereum.USTB_UNDERLYING) {
+      return AaveV3HorizonEthereum.USTB_PRICE_FEED_ADAPTER;
+    }
+    if (underlying == AaveV3HorizonEthereum.USCC_UNDERLYING) {
+      return AaveV3HorizonEthereum.USCC_PRICE_FEED_ADAPTER;
+    }
+    if (underlying == AaveV3HorizonEthereum.USYC_UNDERLYING) {
+      return AaveV3HorizonEthereum.USYC_PRICE_FEED;
+    }
+    if (underlying == AaveV3HorizonEthereum.JTRSY_UNDERLYING) {
+      return AaveV3HorizonEthereum.JTRSY_PRICE_FEED_ADAPTER;
+    }
+    if (underlying == AaveV3HorizonEthereum.JAAA_UNDERLYING) {
+      return AaveV3HorizonEthereum.JAAA_PRICE_FEED_ADAPTER;
+    }
+    if (underlying == AaveV3HorizonEthereum.VBILL_UNDERLYING) {
+      return AaveV3HorizonEthereum.VBILL_PRICE_FEED;
+    }
+    if (underlying == AaveV3HorizonEthereum.GHO_UNDERLYING) {
+      return AaveV3HorizonEthereum.GHO_PRICE_FEED;
+    }
+    if (underlying == AaveV3HorizonEthereum.USDC_UNDERLYING) {
+      return AaveV3HorizonEthereum.USDC_PRICE_FEED;
+    }
+    if (underlying == AaveV3HorizonEthereum.RLUSD_UNDERLYING) {
+      return AaveV3HorizonEthereum.RLUSD_PRICE_FEED;
+    }
+    if (underlying == AaveV3HorizonEthereum.ACRED_UNDERLYING) {
+      return AaveV3HorizonEthereum.ACRED_PRICE_FEED;
     }
   }
 

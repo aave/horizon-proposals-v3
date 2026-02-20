@@ -73,7 +73,7 @@ abstract contract ProtocolV3HorizonTestBase is
 
     diffReports(beforeString, afterString);
 
-    // pool-wide validations (replaces upstream seatbelt which requires PayloadsController)
+    // pool-wide validations
     _runHorizonValidations(pool, configAfter);
 
     configChangePlausibilityTest(configBefore, configAfter);
