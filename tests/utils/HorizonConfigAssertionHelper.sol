@@ -31,11 +31,6 @@ abstract contract HorizonConfigAssertionHelper is Test {
   using ReserveConfiguration for DataTypes.ReserveConfigurationMap;
   using EModeConfiguration for uint128;
 
-  string public constant APPROVE_REVERTS = '80';
-
-  bytes32 internal constant EIP1967_IMPL_SLOT =
-    bytes32(uint256(keccak256('eip1967.proxy.implementation')) - 1);
-
   struct ExpectedAssetConfig {
     address underlying;
     bool isRwa;
@@ -67,6 +62,10 @@ abstract contract HorizonConfigAssertionHelper is Test {
     address[] collateralAssets;
     address[] borrowableAssets;
   }
+
+  string public constant APPROVE_REVERTS = '80';
+  bytes32 internal constant EIP1967_IMPL_SLOT =
+    bytes32(uint256(keccak256('eip1967.proxy.implementation')) - 1);
 
   // ─── Per-asset config assertions ───────────────────────────────────
 
@@ -338,7 +337,7 @@ abstract contract HorizonConfigAssertionHelper is Test {
     }
   }
 
-  function _expectedPriceFeed(address underlying) internal pure returns (address) {
+  function _expectedPriceFeed(address underlying) internal pure virtual returns (address) {
     if (underlying == AaveV3HorizonEthereum.USTB_UNDERLYING) {
       return AaveV3HorizonEthereum.USTB_PRICE_FEED_ADAPTER;
     }
@@ -369,6 +368,7 @@ abstract contract HorizonConfigAssertionHelper is Test {
     if (underlying == AaveV3HorizonEthereum.ACRED_UNDERLYING) {
       return AaveV3HorizonEthereum.ACRED_PRICE_FEED;
     }
+    revert('_expectedPriceFeed: unknown underlying');
   }
 
   function _validateATokenImplementations(ReserveConfig[] memory configs) internal {

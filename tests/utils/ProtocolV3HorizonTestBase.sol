@@ -401,8 +401,7 @@ abstract contract ProtocolV3HorizonTestBase is
   }
 
   function _isRwaToken(ReserveConfig memory config) internal view returns (bool) {
-    bytes32 IMPL_SLOT = bytes32(uint256(keccak256('eip1967.proxy.implementation')) - 1);
-    address impl = address(uint160(uint256(vm.load(config.aToken, IMPL_SLOT))));
+    address impl = address(uint160(uint256(vm.load(config.aToken, EIP1967_IMPL_SLOT))));
     return impl == AaveV3HorizonEthereum.RWA_ATOKEN_IMPL;
   }
 
