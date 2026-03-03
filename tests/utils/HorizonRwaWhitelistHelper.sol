@@ -4,7 +4,8 @@ pragma solidity ^0.8.0;
 import {Test} from 'forge-std/Test.sol';
 import {IERC20} from 'aave-helpers/lib/aave-address-book/lib/aave-v3-origin/lib/forge-std/src/interfaces/IERC20.sol';
 import {IPool} from 'aave-v3-origin/contracts/interfaces/IPool.sol';
-import {AaveV3HorizonEthereum} from './AaveV3HorizonEthereum.sol';
+import {AaveV3EthereumHorizonCustom} from 'src/utils/AaveV3EthereumHorizonCustom.sol';
+import {AaveV3EthereumHorizonAssets} from 'aave-address-book-latest/AaveV3EthereumHorizon.sol';
 
 /**
  * @dev Helper for whitelisting E2E test actors on RWA compliance systems used
@@ -47,54 +48,36 @@ abstract contract HorizonRwaWhitelistHelper is Test {
    * @dev Whitelists all E2E test actors on every known RWA compliance system.
    *      Override in test contracts to add whitelisting for newly listed assets.
    */
-  function _whitelistRwaActors(
-    IPool pool,
-    address[] memory actors,
-    bool whitelistPoolContracts
-  ) internal virtual {
-    // Superstate (USTB, USCC)
-    if (whitelistPoolContracts) {
-      _whitelistSuperstateRwa(pool.getReserveAToken(AaveV3HorizonEthereum.USTB_UNDERLYING));
-      _whitelistSuperstateRwa(pool.getReserveAToken(AaveV3HorizonEthereum.USCC_UNDERLYING));
-    }
+  function _whitelistRwaActors(address[] memory actors) internal virtual {
     for (uint256 i; i < actors.length; i++) {
+      // Superstate (USTB, USCC)
       _whitelistSuperstateRwa(actors[i]);
-    }
-
-    // Circle (USYC) — msg.sender in transferFrom must also be whitelisted
-    if (whitelistPoolContracts) {
-      _whitelistUsycRwa(pool.getReserveAToken(AaveV3HorizonEthereum.USYC_UNDERLYING));
-      _whitelistUsycRwa(address(pool));
-    }
-    for (uint256 i; i < actors.length; i++) {
+      // Circle (USYC) — msg.sender in transferFrom must also be whitelisted
       _whitelistUsycRwa(actors[i]);
-    }
-
-    // Centrifuge (JTRSY, JAAA)
-    if (whitelistPoolContracts) {
-      _whitelistCentrifugeRwa(pool.getReserveAToken(AaveV3HorizonEthereum.JTRSY_UNDERLYING));
-      _whitelistCentrifugeRwa(pool.getReserveAToken(AaveV3HorizonEthereum.JAAA_UNDERLYING));
-    }
-    for (uint256 i; i < actors.length; i++) {
+      // Centrifuge (JTRSY, JAAA)
       _whitelistCentrifugeRwa(actors[i]);
-    }
-
-    // Securitize (VBILL)
-    if (whitelistPoolContracts) {
-      _whitelistVbillRwa(pool.getReserveAToken(AaveV3HorizonEthereum.VBILL_UNDERLYING));
-    }
-    for (uint256 i; i < actors.length; i++) {
+      // Securitize (VBILL)
       _whitelistVbillRwa(actors[i]);
-    }
-
-    // Securitize (ACRED) — only if listed (aToken exists)
-    address aAcred = pool.getReserveAToken(AaveV3HorizonEthereum.ACRED_UNDERLYING);
-    if (whitelistPoolContracts) {
-      _whitelistAcredRwa(aAcred);
-    }
-    for (uint256 i; i < actors.length; i++) {
+      // Securitize (ACRED) — only if listed (aToken exists)
       _whitelistAcredRwa(actors[i]);
     }
+  }
+
+  function _whitelistPoolContracts(IPool pool) internal {
+    // Superstate (USTB, USCC)
+    _whitelistSuperstateRwa(pool.getReserveAToken(AaveV3EthereumHorizonAssets.USTB_UNDERLYING));
+    _whitelistSuperstateRwa(pool.getReserveAToken(AaveV3EthereumHorizonAssets.USCC_UNDERLYING));
+    // Circle (USYC)
+    _whitelistUsycRwa(pool.getReserveAToken(AaveV3EthereumHorizonAssets.USYC_UNDERLYING));
+    // Circle (USYC) — msg.sender in transferFrom must also be whitelisted
+    _whitelistUsycRwa(address(pool));
+    // Centrifuge (JTRSY, JAAA)
+    _whitelistCentrifugeRwa(pool.getReserveAToken(AaveV3EthereumHorizonAssets.JTRSY_UNDERLYING));
+    _whitelistCentrifugeRwa(pool.getReserveAToken(AaveV3EthereumHorizonAssets.JAAA_UNDERLYING));
+    // Securitize (VBILL)
+    _whitelistVbillRwa(pool.getReserveAToken(AaveV3EthereumHorizonAssets.VBILL_UNDERLYING));
+    // Securitize (ACRED) — only if listed (aToken exists)
+    _whitelistAcredRwa(pool.getReserveAToken(AaveV3EthereumHorizonCustom.ACRED_UNDERLYING));
   }
 
   // ─── Per-issuer helpers ──────────────────────────────────────────────
@@ -141,7 +124,7 @@ abstract contract HorizonRwaWhitelistHelper is Test {
   }
 
   function _whitelistUsycRwa(address addressToWhitelist) internal {
-    (bool success, bytes memory data) = AaveV3HorizonEthereum.USYC_UNDERLYING.call(
+    (bool success, bytes memory data) = AaveV3EthereumHorizonAssets.USYC_UNDERLYING.call(
       abi.encodeWithSignature('authority()')
     );
     require(success, 'Failed to call authority()');
@@ -171,7 +154,7 @@ abstract contract HorizonRwaWhitelistHelper is Test {
 
   function _whitelistVbillRwa(address addressToWhitelist) internal {
     _whitelistSecuritizeRwa(
-      AaveV3HorizonEthereum.VBILL_UNDERLYING,
+      AaveV3EthereumHorizonAssets.VBILL_UNDERLYING,
       SECURITIZE_ADMIN,
       VBILL_SECURITIZE_FUND_ID,
       addressToWhitelist
@@ -180,7 +163,7 @@ abstract contract HorizonRwaWhitelistHelper is Test {
 
   function _whitelistAcredRwa(address addressToWhitelist) internal {
     _whitelistSecuritizeRwa(
-      AaveV3HorizonEthereum.ACRED_UNDERLYING,
+      AaveV3EthereumHorizonCustom.ACRED_UNDERLYING,
       SECURITIZE_ADMIN,
       ACRED_SECURITIZE_FUND_ID,
       addressToWhitelist
@@ -222,6 +205,7 @@ abstract contract HorizonRwaWhitelistHelper is Test {
       abi.encodeWithSignature('addWallet(address,string)', addressToWhitelist, fundId)
     );
 
+    // confirm the address already has a role (e.g. aToken = special wallet)
     if (success) {
       // Newly added — verify via isWallet
       (success, data) = registryService.call(
@@ -229,12 +213,11 @@ abstract contract HorizonRwaWhitelistHelper is Test {
       );
       require(success && abi.decode(data, (bool)), 'Securitize: addWallet ok but isWallet false');
     }
-    // If addWallet reverted, the address already has a role (e.g. aToken = special wallet)
   }
 
   /// @dev Returns true if `token` requires tokens from whale instead of foundry's `deal`.
   function _needsWhaleDeal(address token) internal pure returns (bool) {
-    return token == AaveV3HorizonEthereum.ACRED_UNDERLYING;
+    return token == AaveV3EthereumHorizonCustom.ACRED_UNDERLYING;
   }
 
   /// @dev Returns the whale address for `token`.
@@ -247,6 +230,7 @@ abstract contract HorizonRwaWhitelistHelper is Test {
   }
 
   /// @dev Transfers `amount` of `token` to `recipient` from a known whale.
+  /// @notice Assumes `recipient` is already whitelisted to hold the token, otherwise reverts.
   function _dealRwaToken(address token, address recipient, uint256 amount) internal {
     address whale = _getWhale(token);
     require(IERC20(token).balanceOf(whale) >= amount, 'whale has insufficient balance');

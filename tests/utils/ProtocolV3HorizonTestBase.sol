@@ -8,9 +8,10 @@ import {ProtocolV3TestBase, ReserveConfig} from 'aave-helpers/src/ProtocolV3Test
 import {IPoolAddressesProvider} from 'aave-v3-origin/contracts/interfaces/IPoolAddressesProvider.sol';
 import {IPoolConfigurator} from 'aave-v3-origin/contracts/interfaces/IPoolConfigurator.sol';
 import {IACLManager} from 'aave-v3-origin/contracts/interfaces/IACLManager.sol';
-import {AaveV3HorizonEthereum} from 'src/utils/AaveV3HorizonEthereum.sol';
-import {HorizonRwaWhitelistHelper} from 'src/utils/HorizonRwaWhitelistHelper.sol';
+import {AaveV3EthereumHorizonCustom} from 'src/utils/AaveV3EthereumHorizonCustom.sol';
+import {HorizonRwaWhitelistHelper} from 'tests/utils/HorizonRwaWhitelistHelper.sol';
 import {HorizonConfigAssertionHelper} from 'tests/utils/HorizonConfigAssertionHelper.sol';
+import {Errors} from 'src/dependencies/Errors.sol';
 
 /**
  * @dev Adapted from ProtocolV3TestBase for the Horizon market (currently at Aave v3.3).
@@ -25,9 +26,9 @@ abstract contract ProtocolV3HorizonTestBase is
   HorizonRwaWhitelistHelper,
   HorizonConfigAssertionHelper
 {
-  string public constant BORROWING_NOT_ENABLED = '30';
-  string public constant BORROW_CAP_EXCEEDED = '50';
-  string public constant SUPPLY_CAP_EXCEEDED = '51';
+  string public constant BORROW_CAP_EXCEEDED = Errors.BORROW_CAP_EXCEEDED;
+  string public constant SUPPLY_CAP_EXCEEDED = Errors.SUPPLY_CAP_EXCEEDED;
+  string public constant BORROWING_NOT_ENABLED = Errors.BORROWING_NOT_ENABLED;
 
   struct E2ETestAssetLocalVars {
     uint256 collateralAssetAmount;
@@ -80,7 +81,8 @@ abstract contract ProtocolV3HorizonTestBase is
 
     // whitelist E2E actors + aTokens on RWA compliance systems before running E2E
     _initTestActors();
-    _whitelistRwaActors({pool: pool, actors: _testActorsArray(), whitelistPoolContracts: true});
+    _whitelistRwaActors(_testActorsArray());
+    _whitelistPoolContracts(pool);
 
     e2eTest_v3_3(pool);
     return (configBefore, configAfter);
@@ -96,7 +98,8 @@ abstract contract ProtocolV3HorizonTestBase is
     _runHorizonValidations(pool, configs);
 
     _initTestActors();
-    _whitelistRwaActors({pool: pool, actors: _testActorsArray(), whitelistPoolContracts: false});
+    _whitelistRwaActors(_testActorsArray());
+    _whitelistPoolContracts(pool);
 
     e2eTest_v3_3(pool);
   }
@@ -285,8 +288,8 @@ abstract contract ProtocolV3HorizonTestBase is
    * the payload. Matches the production multisig execution flow exactly.
    */
   function _executeHorizonPayload(address payload) internal {
-    vm.startPrank(AaveV3HorizonEthereum.HORIZON_EMERGENCY);
-    (bool success, bytes memory resultData) = AaveV3HorizonEthereum.HORIZON_EXECUTOR.call(
+    vm.startPrank(AaveV3EthereumHorizonCustom.HORIZON_EMERGENCY);
+    (bool success, bytes memory resultData) = AaveV3EthereumHorizonCustom.HORIZON_EXECUTOR.call(
       abi.encodeWithSignature(
         'executeTransaction(address,uint256,string,bytes,bool)',
         payload, // target
@@ -402,7 +405,7 @@ abstract contract ProtocolV3HorizonTestBase is
 
   function _isRwaToken(ReserveConfig memory config) internal view returns (bool) {
     address impl = address(uint160(uint256(vm.load(config.aToken, EIP1967_IMPL_SLOT))));
-    return impl == AaveV3HorizonEthereum.RWA_ATOKEN_IMPL;
+    return impl == AaveV3EthereumHorizonCustom.RWA_A_TOKEN_IMPL;
   }
 
   function _enableIfEMode(ReserveConfig memory config, IPool pool, address user) internal {

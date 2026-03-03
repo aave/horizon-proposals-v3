@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {AaveV3HorizonEthereum} from 'src/utils/AaveV3HorizonEthereum.sol';
+import {AaveV3EthereumHorizonCustom} from 'src/utils/AaveV3EthereumHorizonCustom.sol';
+import {AaveV3EthereumHorizonAssets} from 'aave-address-book-latest/AaveV3EthereumHorizon.sol';
 import {AaveV3PayloadHorizonEthereum} from 'src/utils/AaveV3PayloadHorizonEthereum.sol';
 import {IAaveV3ConfigEngine as IEngine} from 'aave-v3-origin/contracts/extensions/v3-config-engine/IAaveV3ConfigEngine.sol';
 import {EngineFlags} from 'aave-v3-origin/contracts/extensions/v3-config-engine/EngineFlags.sol';
@@ -30,7 +31,7 @@ contract AaveV3Horizon_ACREDListing_20260217 is AaveV3PayloadHorizonEthereum {
         asset: ACRED,
         assetSymbol: 'ACRED',
         priceFeed: ACRED_PRICE_FEED,
-        rateStrategyParams: AaveV3HorizonEthereum.defaultRwaInterestRateInputData(),
+        rateStrategyParams: AaveV3EthereumHorizonCustom.defaultRwaInterestRateInputData(),
         enabledToBorrow: EngineFlags.DISABLED,
         borrowableInIsolation: EngineFlags.DISABLED,
         withSiloedBorrowing: EngineFlags.DISABLED,
@@ -45,8 +46,8 @@ contract AaveV3Horizon_ACREDListing_20260217 is AaveV3PayloadHorizonEthereum {
         liqProtocolFee: 0
       }),
       IEngine.TokenImplementations({
-        aToken: AaveV3HorizonEthereum.RWA_ATOKEN_IMPL,
-        vToken: AaveV3HorizonEthereum.VARIABLE_DEBT_TOKEN_IMPL
+        aToken: AaveV3EthereumHorizonCustom.RWA_A_TOKEN_IMPL,
+        vToken: AaveV3EthereumHorizonCustom.DEFAULT_VARIABLE_DEBT_TOKEN_IMPL
       })
     );
 
@@ -56,7 +57,7 @@ contract AaveV3Horizon_ACREDListing_20260217 is AaveV3PayloadHorizonEthereum {
   function assetsEModeUpdates() public pure override returns (IEngine.AssetEModeUpdate[] memory) {
     IEngine.AssetEModeUpdate[] memory assetsEMode = new IEngine.AssetEModeUpdate[](2);
 
-    // ACRED as collateral in eMode 1
+    // ACRED as collateral in eMode 3
     assetsEMode[0] = IEngine.AssetEModeUpdate({
       asset: ACRED,
       eModeCategory: ACRED_EMODE_CATEGORY,
@@ -64,9 +65,9 @@ contract AaveV3Horizon_ACREDListing_20260217 is AaveV3PayloadHorizonEthereum {
       borrowable: EngineFlags.DISABLED
     });
 
-    // GHO as borrowable in eMode 1
+    // GHO as borrowable in eMode 3
     assetsEMode[1] = IEngine.AssetEModeUpdate({
-      asset: AaveV3HorizonEthereum.GHO_UNDERLYING,
+      asset: AaveV3EthereumHorizonAssets.GHO_UNDERLYING,
       eModeCategory: ACRED_EMODE_CATEGORY,
       collateral: EngineFlags.DISABLED,
       borrowable: EngineFlags.ENABLED

@@ -3,10 +3,11 @@ pragma solidity ^0.8.0;
 
 import {IPool} from 'aave-v3-origin/contracts/interfaces/IPool.sol';
 import {IDefaultInterestRateStrategyV2} from 'aave-v3-origin/contracts/interfaces/IDefaultInterestRateStrategyV2.sol';
-import {AaveV3HorizonEthereum} from 'src/utils/AaveV3HorizonEthereum.sol';
 import {ProtocolV3HorizonTestBase, ReserveConfig} from 'tests/utils/ProtocolV3HorizonTestBase.sol';
 import {HorizonConfigAssertionHelper} from 'tests/utils/HorizonConfigAssertionHelper.sol';
 import {AaveV3Horizon_ACREDListing_20260217} from 'src/AaveV3Horizon_ACREDListing_20260217/AaveV3Horizon_ACREDListing_20260217.sol';
+import {AaveV3EthereumHorizonCustom} from 'src/utils/AaveV3EthereumHorizonCustom.sol';
+import {AaveV3EthereumHorizonAssets} from 'aave-address-book-latest/AaveV3EthereumHorizon.sol';
 
 /**
  * @dev Test for Horizon ACRED listing
@@ -31,7 +32,7 @@ contract AaveV3Horizon_ACREDListing_20260217_Test is ProtocolV3HorizonTestBase {
   function test_defaultProposalExecution() public virtual {
     defaultTest_v3_3(
       'AaveV3Horizon_ACREDListing_20260217',
-      IPool(AaveV3HorizonEthereum.POOL),
+      IPool(AaveV3EthereumHorizonCustom.POOL),
       address(proposal)
     );
   }
@@ -40,7 +41,7 @@ contract AaveV3Horizon_ACREDListing_20260217_Test is ProtocolV3HorizonTestBase {
    * @dev verifies the exact config values set by the ACRED listing payload
    */
   function test_acredConfig() public {
-    IPool pool = IPool(AaveV3HorizonEthereum.POOL);
+    IPool pool = IPool(AaveV3EthereumHorizonCustom.POOL);
 
     // check eMode 3 before execution (has config values but no assets assigned)
     _assertEModeConfig(
@@ -68,9 +69,9 @@ contract AaveV3Horizon_ACREDListing_20260217_Test is ProtocolV3HorizonTestBase {
 
   function _setExpectedConfig() internal virtual override {
     expectedAssetConfig = ExpectedAssetConfig({
-      underlying: AaveV3HorizonEthereum.ACRED_UNDERLYING,
+      underlying: AaveV3EthereumHorizonCustom.ACRED_UNDERLYING,
       isRwa: true,
-      oracle: AaveV3HorizonEthereum.ACRED_PRICE_FEED,
+      oracle: AaveV3EthereumHorizonCustom.ACRED_PRICE_FEED,
       aTokenName: 'Aave Horizon RWA ACRED',
       aTokenSymbol: 'aHorRwaACRED',
       variableDebtTokenName: 'Aave Horizon RWA Variable Debt ACRED',
@@ -98,8 +99,8 @@ contract AaveV3Horizon_ACREDListing_20260217_Test is ProtocolV3HorizonTestBase {
       liquidationThreshold: 78_00,
       liquidationBonus: 100_00 + 9_00,
       label: 'ACRED GHO',
-      collateralAssets: _toAddressArray(AaveV3HorizonEthereum.ACRED_UNDERLYING),
-      borrowableAssets: _toAddressArray(AaveV3HorizonEthereum.GHO_UNDERLYING)
+      collateralAssets: _toAddressArray(AaveV3EthereumHorizonCustom.ACRED_UNDERLYING),
+      borrowableAssets: _toAddressArray(AaveV3EthereumHorizonAssets.GHO_UNDERLYING)
     });
   }
 }
@@ -120,11 +121,11 @@ contract AaveV3Horizon_ACREDListing_20260217_PostExecution_Test is
   }
 
   function test_defaultPostExecution() public {
-    defaultTest_v3_3_postExecution(IPool(AaveV3HorizonEthereum.POOL));
+    defaultTest_v3_3_postExecution(IPool(AaveV3EthereumHorizonCustom.POOL));
   }
 
   function test_acredConfigPostExecution() public {
-    IPool pool = IPool(AaveV3HorizonEthereum.POOL);
+    IPool pool = IPool(AaveV3EthereumHorizonCustom.POOL);
     _assertAssetConfig(pool, expectedAssetConfig);
     _assertEModeConfig(pool, expectedEModeConfig);
   }

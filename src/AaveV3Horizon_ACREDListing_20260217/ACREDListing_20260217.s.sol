@@ -6,11 +6,7 @@ import {AaveV3Horizon_ACREDListing_20260217} from './AaveV3Horizon_ACREDListing_
 
 /**
  * @dev Deploy Horizon ACRED Listing payload.
- * deploy-command: forge script ACREDListing_20260217.s.sol:DeployEthereum \
-		--rpc-url ${CHAIN} --account ${ACCOUNT} --slow --gas-estimate-multiplier 150 \
-		--chain ${CHAIN} --verifier-url ${VERIFIER_URL} \
-		--sig "run()" \
-		--verify --broadcast \
+ * deploy-command: make deploy-payload
  */
 contract DeployEthereum is EthereumScript {
   function run() external broadcast {
