@@ -14,7 +14,9 @@ import {EngineFlags} from 'aave-v3-origin/contracts/extensions/v3-config-engine/
  *      on the Horizon pool with an ACRED/GHO eMode.
  */
 contract AaveV3Horizon_ACREDListing_20260217 is AaveV3PayloadHorizonEthereum {
+  // https://etherscan.io/address/0x17418038ecF73BA4026c4f428547BF099706F27B
   address public constant ACRED = 0x17418038ecF73BA4026c4f428547BF099706F27B;
+  // https://etherscan.io/address/0x60AEd7d20AC6328f7BA771aD58931c996aff30E8
   address public constant ACRED_PRICE_FEED = 0x60AEd7d20AC6328f7BA771aD58931c996aff30E8;
   uint8 public constant ACRED_EMODE_CATEGORY = 3;
 

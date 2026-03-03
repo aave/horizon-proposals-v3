@@ -26,10 +26,6 @@ abstract contract ProtocolV3HorizonTestBase is
   HorizonRwaWhitelistHelper,
   HorizonConfigAssertionHelper
 {
-  string public constant BORROW_CAP_EXCEEDED = Errors.BORROW_CAP_EXCEEDED;
-  string public constant SUPPLY_CAP_EXCEEDED = Errors.SUPPLY_CAP_EXCEEDED;
-  string public constant BORROWING_NOT_ENABLED = Errors.BORROWING_NOT_ENABLED;
-
   struct E2ETestAssetLocalVars {
     uint256 collateralAssetAmount;
     uint256 testAssetAmount;
@@ -179,7 +175,7 @@ abstract contract ProtocolV3HorizonTestBase is
     poolConfigurator.setBorrowCap(testAssetConfig.underlying, borrowCap);
 
     // caps should revert when supplying slightly more
-    vm.expectRevert(bytes(SUPPLY_CAP_EXCEEDED));
+    vm.expectRevert(bytes(Errors.SUPPLY_CAP_EXCEEDED));
     vm.prank(testAssetSupplier);
     pool.supply({
       asset: testAssetConfig.underlying,
@@ -210,7 +206,7 @@ abstract contract ProtocolV3HorizonTestBase is
         );
       }
 
-      vm.expectRevert(bytes(BORROW_CAP_EXCEEDED));
+      vm.expectRevert(bytes(Errors.BORROW_CAP_EXCEEDED));
       vm.prank(regularCollateralSupplier);
       pool.borrow({
         asset: testAssetConfig.underlying,
@@ -391,7 +387,7 @@ abstract contract ProtocolV3HorizonTestBase is
       });
     } else {
       // attempting to borrow RWA should revert (borrowing disabled)
-      vm.expectRevert(bytes(BORROWING_NOT_ENABLED));
+      vm.expectRevert(bytes(Errors.BORROWING_NOT_ENABLED));
       vm.prank(borrower);
       pool.borrow({
         asset: collateralConfig.underlying,
