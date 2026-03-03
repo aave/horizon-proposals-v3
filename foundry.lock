@@ -1,4 +1,10 @@
 {
+  "lib/aave-address-book": {
+    "tag": {
+      "name": "v4.46.4",
+      "rev": "e1af194a9ee8afc168a320e28de39305db30af7f"
+    }
+  },
   "lib/aave-helpers": {
     "branch": {
       "name": "main",

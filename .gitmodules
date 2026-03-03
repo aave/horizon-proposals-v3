@@ -7,4 +7,4 @@
 	url = https://github.com/aave-dao/aave-umbrella
 [submodule "lib/aave-address-book"]
 	path = lib/aave-address-book
-	url = https://github.com/bgd-labs/aave-address-book.git
+	url = https://github.com/bgd-labs/aave-address-book
