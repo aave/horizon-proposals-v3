@@ -81,8 +81,8 @@ abstract contract ProtocolV3HorizonTestBase is
 
     // whitelist E2E actors + aTokens on RWA compliance systems before running E2E
     _initTestActors();
-    _whitelistRwaActors(_testActorsArray());
-    _whitelistPoolContracts(pool);
+    _whitelistRwaUsers(_testActorsArray());
+    _whitelistRwaPool(pool);
 
     e2eTest_v3_3(pool);
     return (configBefore, configAfter);
@@ -98,8 +98,8 @@ abstract contract ProtocolV3HorizonTestBase is
     _runHorizonValidations(pool, configs);
 
     _initTestActors();
-    _whitelistRwaActors(_testActorsArray());
-    _whitelistPoolContracts(pool);
+    _whitelistRwaUsers(_testActorsArray());
+    _whitelistRwaPool(pool);
 
     e2eTest_v3_3(pool);
   }

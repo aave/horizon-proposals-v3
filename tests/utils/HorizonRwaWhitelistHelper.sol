@@ -48,7 +48,7 @@ abstract contract HorizonRwaWhitelistHelper is Test {
    * @dev Whitelists all E2E test actors on every known RWA compliance system.
    *      Override in test contracts to add whitelisting for newly listed assets.
    */
-  function _whitelistRwaActors(address[] memory actors) internal virtual {
+  function _whitelistRwaUsers(address[] memory actors) internal virtual {
     for (uint256 i; i < actors.length; i++) {
       // Superstate (USTB, USCC)
       _whitelistSuperstateRwa(actors[i]);
@@ -63,7 +63,7 @@ abstract contract HorizonRwaWhitelistHelper is Test {
     }
   }
 
-  function _whitelistPoolContracts(IPool pool) internal {
+  function _whitelistRwaPool(IPool pool) internal {
     // Superstate (USTB, USCC)
     _whitelistSuperstateRwa(pool.getReserveAToken(AaveV3EthereumHorizonAssets.USTB_UNDERLYING));
     _whitelistSuperstateRwa(pool.getReserveAToken(AaveV3EthereumHorizonAssets.USCC_UNDERLYING));
