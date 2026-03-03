@@ -87,10 +87,10 @@ abstract contract HorizonConfigAssertionHelper is Test {
   function _assertRwaConfig(IPool pool, address underlying) internal {
     _assertRwaOracleRegistry(underlying);
     _assertRwaATokenApproveReverts(pool, underlying);
-    _assertRwaReserveConfigurationSanity(pool, underlying);
+    _assertRwaReserveConfigurationSanityCheck(pool, underlying);
   }
 
-  function _assertRwaReserveConfigurationSanity(IPool pool, address underlying) internal view {
+  function _assertRwaReserveConfigurationSanityCheck(IPool pool, address underlying) internal view {
     DataTypes.ReserveConfigurationMap memory config = pool.getConfiguration(underlying);
     assertEq(config.getBorrowingEnabled(), false, 'borrowingEnabled');
     assertEq(config.getFlashLoanEnabled(), false, 'flashloanable');
