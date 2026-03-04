@@ -296,7 +296,14 @@ abstract contract ProtocolV3HorizonTestBase is
       )
     );
     vm.stopPrank();
-    require(success, string(resultData));
+    if (!success) {
+      if (resultData.length > 0) {
+        assembly {
+          revert(add(resultData, 32), mload(resultData))
+        }
+      }
+      revert('_executeHorizonPayload: unknown error');
+    }
   }
 
   function _initTestActors() internal {
