@@ -106,7 +106,7 @@ abstract contract ProtocolV3HorizonTestBase is
    */
   function e2eTest_v3_3(IPool pool) public {
     ReserveConfig[] memory configs = _getReservesConfigs(pool);
-    ReserveConfig memory collateralConfig = _goodCollateral(configs);
+    ReserveConfig memory collateralConfig = _goodRandomCollateral(configs);
     uint256 snapshot = vm.snapshotState();
     for (uint256 i; i < configs.length; i++) {
       if (_includeInE2e(configs[i])) {
@@ -152,7 +152,8 @@ abstract contract ProtocolV3HorizonTestBase is
     _enableIfEMode(collateralConfig, pool, emodeCollateralSupplier);
     _deposit(collateralConfig, pool, emodeCollateralSupplier, vars.collateralAssetAmount);
     _deposit(collateralConfig, pool, regularCollateralSupplier, vars.collateralAssetAmount);
-    // transfer from whale for tokens when foundry's `deal` doesn't work
+    // transfer from whale for tokens when `deal` doesn't work
+    // needed for assets like ACRED / VBILL that use DSToken, issues due to internal token accounting
     if (_needsWhaleDeal(testAssetConfig.underlying)) {
       _dealRwaToken(testAssetConfig.underlying, testAssetSupplier, vars.testAssetAmount);
     }
@@ -427,24 +428,34 @@ abstract contract ProtocolV3HorizonTestBase is
   }
 
   /**
-   * @dev returns a "good" collateral in the list
+   * @dev returns a random "good" collateral from the list
    */
-  function _goodCollateral(
+  function _goodRandomCollateral(
     ReserveConfig[] memory configs
-  ) internal pure returns (ReserveConfig memory config) {
-    for (uint256 i = 0; i < configs.length; i++) {
-      if (
-        // not frozen etc
-        // usable as collateral
-        // not isolated asset as we can only borrow stablecoins against it
-        // ltv is not 0
-        _includeInE2e(configs[i]) &&
-        configs[i].usageAsCollateralEnabled &&
-        configs[i].debtCeiling == 0 &&
-        configs[i].ltv != 0
-      ) return configs[i];
+  ) internal returns (ReserveConfig memory config) {
+    bool found;
+    for (uint256 i; i < configs.length; i++) {
+      if (_isGoodCollateral(configs[i])) {
+        found = true;
+        break;
+      }
     }
-    revert('ERROR: No usable collateral found');
+    require(found, 'ERROR: No usable collateral found');
+
+    while (true) {
+      uint256 idx = vm.randomUint(0, configs.length - 1);
+      if (_isGoodCollateral(configs[idx])) {
+        return configs[idx];
+      }
+    }
+  }
+
+  function _isGoodCollateral(ReserveConfig memory config) internal pure returns (bool) {
+    return
+      _includeInE2e(config) &&
+      config.usageAsCollateralEnabled &&
+      config.debtCeiling == 0 &&
+      config.ltv != 0;
   }
 
   /**

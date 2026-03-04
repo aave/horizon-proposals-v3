@@ -41,6 +41,7 @@ abstract contract HorizonRwaWhitelistHelper is Test {
   // Securitize DS-protocol tokens store balances in an external data store,
   // so cannot use native foundry deal. Transfer from a real holder instead.
   address internal constant ACRED_WHALE = 0xa0759A0DFdE5395a1892aEd90eB5665698CFaa05;
+  address internal constant VBILL_WHALE = 0x69133f8Ef7F9A5F80D25c2DAEaea64C804aC7Cf9;
 
   // ─── Orchestrator ────────────────────────────────────────────────────
 
@@ -228,13 +229,17 @@ abstract contract HorizonRwaWhitelistHelper is Test {
 
   /// @dev Returns true if `token` requires tokens from whale instead of foundry's `deal`.
   function _needsWhaleDeal(address token) internal pure returns (bool) {
-    return token == AaveV3EthereumHorizonCustom.ACRED_UNDERLYING;
+    return
+      token == AaveV3EthereumHorizonCustom.ACRED_UNDERLYING ||
+      token == AaveV3EthereumHorizonAssets.VBILL_UNDERLYING;
   }
 
   /// @dev Returns the whale address for `token`.
   function _getWhale(address token) internal pure returns (address) {
-    if (_needsWhaleDeal(token)) {
+    if (token == AaveV3EthereumHorizonCustom.ACRED_UNDERLYING) {
       return ACRED_WHALE;
+    } else if (token == AaveV3EthereumHorizonAssets.VBILL_UNDERLYING) {
+      return VBILL_WHALE;
     } else {
       revert('_getWhale: no whale configured');
     }
