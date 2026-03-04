@@ -106,14 +106,18 @@ abstract contract ProtocolV3HorizonTestBase is
    */
   function e2eTest_v3_3(IPool pool) public {
     ReserveConfig[] memory configs = _getReservesConfigs(pool);
-    ReserveConfig memory collateralConfig = _goodRandomCollateral(configs);
     uint256 snapshot = vm.snapshotState();
-    for (uint256 i; i < configs.length; i++) {
-      if (_includeInE2e(configs[i])) {
-        e2eTestAsset_v3_3(pool, collateralConfig, configs[i]);
-        vm.revertToState(snapshot);
-      } else {
-        console.log('E2E: TestAsset %s SKIPPED', configs[i].symbol);
+    for (uint256 c; c < configs.length; c++) {
+      if (!_isGoodCollateral(configs[c])) {
+        continue;
+      }
+      for (uint256 i; i < configs.length; i++) {
+        if (_includeInE2e(configs[i])) {
+          e2eTestAsset_v3_3(pool, configs[c], configs[i]);
+          vm.revertToState(snapshot);
+        } else {
+          console.log('E2E: TestAsset %s SKIPPED', configs[i].symbol);
+        }
       }
     }
   }
@@ -150,14 +154,9 @@ abstract contract ProtocolV3HorizonTestBase is
 
     // eMode supplier enters eMode; regular supplier stays in eMode 0
     _enableIfEMode(collateralConfig, pool, emodeCollateralSupplier);
-    _deposit(collateralConfig, pool, emodeCollateralSupplier, vars.collateralAssetAmount);
-    _deposit(collateralConfig, pool, regularCollateralSupplier, vars.collateralAssetAmount);
-    // transfer from whale for tokens when `deal` doesn't work
-    // needed for assets like ACRED / VBILL that use DSToken, issues due to internal token accounting
-    if (_needsWhaleDeal(testAssetConfig.underlying)) {
-      _dealRwaToken(testAssetConfig.underlying, testAssetSupplier, vars.testAssetAmount);
-    }
-    _deposit(testAssetConfig, pool, testAssetSupplier, vars.testAssetAmount);
+    _supply(collateralConfig, pool, emodeCollateralSupplier, vars.collateralAssetAmount);
+    _supply(collateralConfig, pool, regularCollateralSupplier, vars.collateralAssetAmount);
+    _supply(testAssetConfig, pool, testAssetSupplier, vars.testAssetAmount);
 
     uint256 snapshotAfterDeposits = vm.snapshotState();
 
@@ -192,14 +191,14 @@ abstract contract ProtocolV3HorizonTestBase is
         vm.prank(addressesProvider.getACLAdmin());
         poolConfigurator.setSupplyCap(testAssetConfig.underlying, 0);
 
-        _deposit(
+        _supply(
           testAssetConfig,
           pool,
           testAssetSupplier,
           vars.borrowAmount - vars.aTokenTotalSupply
         );
 
-        _deposit(
+        _supply(
           collateralConfig,
           pool,
           regularCollateralSupplier,
@@ -427,35 +426,44 @@ abstract contract ProtocolV3HorizonTestBase is
     }
   }
 
-  /**
-   * @dev returns a random "good" collateral from the list
-   */
-  function _goodRandomCollateral(
-    ReserveConfig[] memory configs
-  ) internal returns (ReserveConfig memory config) {
-    bool found;
-    for (uint256 i; i < configs.length; i++) {
-      if (_isGoodCollateral(configs[i])) {
-        found = true;
-        break;
-      }
-    }
-    require(found, 'ERROR: No usable collateral found');
-
-    while (true) {
-      uint256 idx = vm.randomUint(0, configs.length - 1);
-      if (_isGoodCollateral(configs[idx])) {
-        return configs[idx];
-      }
-    }
-  }
-
   function _isGoodCollateral(ReserveConfig memory config) internal pure returns (bool) {
     return
       _includeInE2e(config) &&
       config.usageAsCollateralEnabled &&
       config.debtCeiling == 0 &&
       config.ltv != 0;
+  }
+
+  /**
+   * @dev Overrides `_deposit` to use whale transfers for tokens incompatible with
+   *      foundry's `deal` (e.g. Securitize DSTokens that store balances in an external data store).
+   */
+  function _supply(
+    ReserveConfig memory config,
+    IPool pool,
+    address user,
+    uint256 amount
+  ) internal virtual {
+    if (_needsWhaleDeal(config.underlying)) {
+      require(!config.isFrozen, 'DEPOSIT(): FROZEN_RESERVE');
+      require(config.isActive, 'DEPOSIT(): INACTIVE_RESERVE');
+      require(!config.isPaused, 'DEPOSIT(): PAUSED_RESERVE');
+
+      uint256 aTokenBefore = IERC20(config.aToken).balanceOf(user);
+
+      _dealRwaToken(config.underlying, user, amount);
+
+      vm.startPrank(user);
+      IERC20(config.underlying).approve(address(pool), amount);
+      console.log('SUPPLY: %s, Amount: %s', config.symbol, amount);
+      pool.supply(config.underlying, amount, user, 0);
+      vm.stopPrank();
+
+      uint256 aTokenAfter = IERC20(config.aToken).balanceOf(user);
+      assertApproxEqAbs(aTokenAfter, aTokenBefore + amount, 2);
+    } else {
+      _deposit(config, pool, user, amount);
+    }
   }
 
   /**

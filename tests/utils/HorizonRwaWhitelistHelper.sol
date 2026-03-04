@@ -212,19 +212,38 @@ abstract contract HorizonRwaWhitelistHelper is Test {
     (success, ) = registryService.call(
       abi.encodeWithSignature('addWallet(address,string)', addressToWhitelist, fundId)
     );
-    if (success) {
-      require(
-        _isSecuritizeWhitelisted(registryService, addressToWhitelist),
-        'Securitize: address not whitelisted'
-      );
-    }
+    // always verify the address is whitelisted as a regular wallet OR passes compliance as a special wallet.
+    require(
+      _isSecuritizeWhitelisted(registryService, addressToWhitelist) ||
+        _passesSecuritizeCompliance(token, addressToWhitelist),
+      'Securitize: not whitelisted'
+    );
   }
 
+  /// @dev Returns true if `addr` is whitelisted as a regular wallet.
   function _isSecuritizeWhitelisted(address registryService, address addr) internal returns (bool) {
     (bool success, bytes memory data) = registryService.call(
       abi.encodeWithSignature('isWallet(address)', addr)
     );
     return success && abi.decode(data, (bool));
+  }
+
+  /// @dev Checks if `addr` passes the DS compliance service's preTransferCheck (code 0 = allowed).
+  function _passesSecuritizeCompliance(address token, address addr) internal returns (bool) {
+    (bool success, bytes memory data) = token.call(abi.encodeWithSignature('COMPLIANCE_SERVICE()'));
+    if (!success) return false;
+    (success, data) = token.call(
+      abi.encodeWithSignature('getDSService(uint256)', abi.decode(data, (uint256)))
+    );
+    if (!success) return false;
+    address complianceService = abi.decode(data, (address));
+
+    (success, data) = complianceService.call(
+      abi.encodeWithSignature('preTransferCheck(address,address,uint256)', addr, addr, 0)
+    );
+    if (!success) return false;
+    (uint256 code, ) = abi.decode(data, (uint256, string));
+    return code == 0;
   }
 
   /// @dev Returns true if `token` requires tokens from whale instead of foundry's `deal`.
