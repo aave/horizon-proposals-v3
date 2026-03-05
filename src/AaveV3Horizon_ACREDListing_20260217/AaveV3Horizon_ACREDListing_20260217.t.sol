@@ -9,11 +9,7 @@ import {AaveV3Horizon_ACREDListing_20260217} from 'src/AaveV3Horizon_ACREDListin
 import {AaveV3EthereumHorizonCustom} from 'src/utils/AaveV3EthereumHorizonCustom.sol';
 import {AaveV3EthereumHorizonAssets} from 'aave-address-book-latest/AaveV3EthereumHorizon.sol';
 
-/**
- * @dev Test for Horizon ACRED listing
- * command: FOUNDRY_PROFILE=test forge test --match-path=src/AaveV3Horizon_ACREDListing_20260217/AaveV3Horizon_ACREDListing_20260217.t.sol -vv
- */
-contract AaveV3Horizon_ACREDListing_20260217_Test is ProtocolV3HorizonTestBase {
+abstract contract AaveV3Horizon_ACREDListing_20260217_TestBase is ProtocolV3HorizonTestBase {
   AaveV3Horizon_ACREDListing_20260217 internal proposal;
 
   ExpectedAssetConfig internal expectedAssetConfig;
@@ -21,50 +17,10 @@ contract AaveV3Horizon_ACREDListing_20260217_Test is ProtocolV3HorizonTestBase {
 
   function setUp() public virtual {
     _setExpectedConfig();
-
-    vm.createSelectFork(vm.rpcUrl('mainnet'), 24473387);
-    proposal = new AaveV3Horizon_ACREDListing_20260217();
   }
 
-  /**
-   * @dev executes the generic test suite including e2e and config snapshots
-   */
-  function test_defaultProposalExecution() public virtual {
-    defaultTest_v3_3(
-      'AaveV3Horizon_ACREDListing_20260217',
-      IPool(AaveV3EthereumHorizonCustom.POOL),
-      address(proposal)
-    );
-  }
-
-  /**
-   * @dev verifies the exact config values set by the ACRED listing payload
-   */
-  function test_acredConfig() public {
-    IPool pool = IPool(AaveV3EthereumHorizonCustom.POOL);
-
-    // check eMode 3 before execution (has config values but no assets assigned)
-    _assertEModeConfig(
-      pool,
-      ExpectedEModeConfig({
-        eModeCategory: 3,
-        ltv: 72_00,
-        liquidationThreshold: 79_00,
-        liquidationBonus: 100_00 + 7_50,
-        label: '',
-        collateralAssets: new address[](0),
-        borrowableAssets: new address[](0)
-      })
-    );
-
-    // execute payload
-    _executeHorizonPayload(address(proposal));
-
-    // verify ACRED asset config
-    _assertAssetConfig(pool, expectedAssetConfig);
-
-    // verify eMode 3 = ACRED GHO after execution
-    _assertEModeConfig(pool, expectedEModeConfig);
+  function _pool() internal pure returns (IPool) {
+    return IPool(AaveV3EthereumHorizonCustom.POOL);
   }
 
   function _setExpectedConfig() internal virtual override {
@@ -106,30 +62,77 @@ contract AaveV3Horizon_ACREDListing_20260217_Test is ProtocolV3HorizonTestBase {
 }
 
 /**
+ * @dev Test for Horizon ACRED listing (pre-execution).
+ * command: FOUNDRY_PROFILE=test forge test --match-contract AaveV3Horizon_ACREDListing_20260217_Test -vv
+ */
+contract AaveV3Horizon_ACREDListing_20260217_Test is AaveV3Horizon_ACREDListing_20260217_TestBase {
+  function setUp() public virtual override {
+    super.setUp();
+    vm.createSelectFork(vm.rpcUrl('mainnet'), 24473387);
+    proposal = new AaveV3Horizon_ACREDListing_20260217();
+  }
+
+  /**
+   * @dev executes the generic test suite including e2e and config snapshots
+   */
+  function test_defaultProposalExecution() public virtual {
+    defaultTest_v3_3('AaveV3Horizon_ACREDListing_20260217', _pool(), address(proposal));
+  }
+
+  /**
+   * @dev verifies the exact config values set by the ACRED listing payload
+   */
+  function test_acredConfig() public virtual {
+    IPool pool = _pool();
+
+    // check eMode 3 before execution (has config values but no assets assigned)
+    _assertEModeConfig(
+      pool,
+      ExpectedEModeConfig({
+        eModeCategory: 3,
+        ltv: 72_00,
+        liquidationThreshold: 79_00,
+        liquidationBonus: 100_00 + 7_50,
+        label: '',
+        collateralAssets: new address[](0),
+        borrowableAssets: new address[](0)
+      })
+    );
+
+    // execute payload
+    _executeHorizonPayload(address(proposal));
+
+    // verify ACRED asset config
+    _assertAssetConfig(pool, expectedAssetConfig);
+
+    // verify eMode 3 = ACRED GHO after execution
+    _assertEModeConfig(pool, expectedEModeConfig);
+  }
+}
+
+/**
  * @dev Post-execution fork test. Run after the payload has been executed on mainnet
  *      to validate the live state matches expected config and run full E2E.
  * command: FOUNDRY_PROFILE=test forge test --match-contract AaveV3Horizon_ACREDListing_20260217_PostExecution_Test -vv
  */
 contract AaveV3Horizon_ACREDListing_20260217_PostExecution_Test is
-  AaveV3Horizon_ACREDListing_20260217_Test
+  AaveV3Horizon_ACREDListing_20260217_TestBase
 {
   function setUp() public virtual override {
-    _setExpectedConfig();
+    super.setUp();
     vm.skip(true, 'skipping post-execution test');
     // TODO: pin to block after on-chain execution
     vm.createSelectFork(vm.rpcUrl('mainnet'));
+    proposal = AaveV3Horizon_ACREDListing_20260217(0xD7b0ed496C468aDb1702D8dFe08383644b57a544);
+    _executeHorizonPayload(address(proposal));
   }
 
-  function test_defaultPostExecution() public {
-    defaultTest_v3_3_postExecution(IPool(AaveV3EthereumHorizonCustom.POOL));
+  function test_defaultProposalExecution() public {
+    defaultTest_v3_3_postExecution(_pool());
   }
 
-  function test_acredConfigPostExecution() public {
-    IPool pool = IPool(AaveV3EthereumHorizonCustom.POOL);
-    _assertAssetConfig(pool, expectedAssetConfig);
-    _assertEModeConfig(pool, expectedEModeConfig);
+  function test_acredConfig() public {
+    _assertAssetConfig(_pool(), expectedAssetConfig);
+    _assertEModeConfig(_pool(), expectedEModeConfig);
   }
-
-  // no payload to execute post-deployment
-  function test_defaultProposalExecution() public override {}
 }
