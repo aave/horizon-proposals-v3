@@ -87,6 +87,7 @@ abstract contract HorizonConfigAssertionHelper is Test {
   function _assertRwaConfig(IPool pool, address underlying) internal {
     _assertRwaOracleRegistry(underlying);
     _assertRwaATokenApproveReverts(pool, underlying);
+    _assertRwaATokenTransferReverts(pool, underlying);
     _assertRwaReserveConfigurationSanityCheck(pool, underlying);
   }
 
@@ -212,6 +213,14 @@ abstract contract HorizonConfigAssertionHelper is Test {
     // rwa aTokens do not support approve
     vm.expectRevert(bytes(Errors.OPERATION_NOT_SUPPORTED));
     IERC20(aToken).approve(makeAddr('tmpUser'), 0);
+  }
+
+  function _assertRwaATokenTransferReverts(IPool pool, address underlying) internal {
+    address aToken = pool.getReserveAToken(underlying);
+    deal(aToken, makeAddr('tmpUser'), 1e18);
+    // rwa aTokens do not support aToken transfers
+    vm.expectRevert(bytes(Errors.OPERATION_NOT_SUPPORTED));
+    IERC20(aToken).transfer(makeAddr('tmpUser2'), 1);
   }
 
   // ─── eMode config assertions ──────────────────────────────────────
