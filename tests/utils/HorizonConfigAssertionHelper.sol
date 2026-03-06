@@ -15,10 +15,11 @@ import {IDefaultInterestRateStrategyV2} from 'aave-v3-origin/contracts/interface
 import {DataTypes} from 'aave-v3-origin/contracts/protocol/libraries/types/DataTypes.sol';
 import {ReserveConfiguration} from 'aave-v3-origin/contracts/protocol/libraries/configuration/ReserveConfiguration.sol';
 import {EModeConfiguration} from 'aave-v3-origin/contracts/protocol/libraries/configuration/EModeConfiguration.sol';
+import {IncentivizedERC20} from 'aave-helpers/lib/aave-address-book/lib/aave-v3-origin/src/contracts/protocol/tokenization/base/IncentivizedERC20.sol';
 import {ReserveConfig} from 'aave-helpers/src/ProtocolV3TestBase.sol';
 import {IRwaOracleParameterRegistry} from 'src/interfaces/IRwaOracleParameterRegistry.sol';
 import {AaveV3EthereumHorizonCustom} from 'src/utils/AaveV3EthereumHorizonCustom.sol';
-import {AaveV3EthereumHorizonAssets} from 'aave-address-book-latest/AaveV3EthereumHorizon.sol';
+import {AaveV3EthereumHorizon, AaveV3EthereumHorizonAssets} from 'aave-address-book-latest/AaveV3EthereumHorizon.sol';
 import {Errors} from 'src/dependencies/Errors.sol';
 
 /**
@@ -136,6 +137,12 @@ abstract contract HorizonConfigAssertionHelper is Test {
     } else {
       assertEq(impl, AaveV3EthereumHorizonCustom.DEFAULT_A_TOKEN_IMPL, 'aTokenImpl');
     }
+
+    assertEq(
+      address(IncentivizedERC20(aToken).getIncentivesController()),
+      AaveV3EthereumHorizon.DEFAULT_INCENTIVES_CONTROLLER,
+      'aToken incentivesController'
+    );
   }
 
   function _assertVariableDebtToken(IPool pool, ExpectedAssetConfig memory expected) internal view {
@@ -156,6 +163,12 @@ abstract contract HorizonConfigAssertionHelper is Test {
       impl,
       AaveV3EthereumHorizonCustom.DEFAULT_VARIABLE_DEBT_TOKEN_IMPL,
       'variableDebtTokenImpl'
+    );
+
+    assertEq(
+      address(IncentivizedERC20(variableDebtToken).getIncentivesController()),
+      AaveV3EthereumHorizon.DEFAULT_INCENTIVES_CONTROLLER,
+      'variableDebtToken incentivesController'
     );
   }
 
@@ -215,12 +228,12 @@ abstract contract HorizonConfigAssertionHelper is Test {
     IERC20(aToken).approve(makeAddr('tmpUser'), 0);
   }
 
-  function _assertRwaATokenTransferReverts(IPool pool, address underlying) internal {
+  function _assertRwaATokenTransferReverts(IPool pool, address underlying) internal virtual {
     address aToken = pool.getReserveAToken(underlying);
-    deal(aToken, makeAddr('tmpUser'), 1e18);
-    // rwa aTokens do not support aToken transfers
+    // rwa aTokens do not support transfers
+    vm.prank(makeAddr('rwaTransferSender'));
     vm.expectRevert(bytes(Errors.OPERATION_NOT_SUPPORTED));
-    IERC20(aToken).transfer(makeAddr('tmpUser2'), 1);
+    IERC20(aToken).transfer(makeAddr('nonWhitelistedUser'), 0);
   }
 
   // ─── eMode config assertions ──────────────────────────────────────
@@ -410,6 +423,23 @@ abstract contract HorizonConfigAssertionHelper is Test {
         vm.expectRevert(bytes(Errors.OPERATION_NOT_SUPPORTED));
         IERC20(configs[i].aToken).approve(address(1), 0);
       }
+
+      // verify incentives controller on aToken
+      assertEq(
+        address(IncentivizedERC20(configs[i].aToken).getIncentivesController()),
+        AaveV3EthereumHorizon.DEFAULT_INCENTIVES_CONTROLLER,
+        string.concat('VALIDATION: unexpected aToken incentivesController for ', configs[i].symbol)
+      );
+
+      // verify incentives controller on variable debt token
+      assertEq(
+        address(IncentivizedERC20(configs[i].variableDebtToken).getIncentivesController()),
+        AaveV3EthereumHorizon.DEFAULT_INCENTIVES_CONTROLLER,
+        string.concat(
+          'VALIDATION: unexpected variableDebtToken incentivesController for ',
+          configs[i].symbol
+        )
+      );
     }
   }
 
