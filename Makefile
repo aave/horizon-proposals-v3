@@ -11,10 +11,13 @@ test   :; forge test -vvv
 
 test-contract :; forge test --match-contract ${filter} -vv
 
-# Deploy
-deploy-ledger-zk :; FOUNDRY_PROFILE=zksync forge script $(if $(filter zksync,${chain}),--zksync) ${contract} --rpc-url ${chain} $(if ${dry},--sender 0x73AF3bcf944a6559933396c1577B257e2054D935 -vvvv, --ledger --mnemonic-indexes ${MNEMONIC_INDEX} --sender ${LEDGER_SENDER} --verify -vvvv --slow --broadcast --verifier etherscan)
-deploy-ledger :; forge script $(if $(filter zksync,${chain}),--zksync) ${contract} --rpc-url ${chain} $(if ${dry},--sender 0x73AF3bcf944a6559933396c1577B257e2054D935 -vvvv, --ledger --mnemonic-indexes ${MNEMONIC_INDEX} --sender ${LEDGER_SENDER} --verify -vvvv --slow --broadcast) $(if ${legacy}, --legacy, )
-deploy-pk :; forge script $(if $(filter zksync,${chain}),--zksync) ${contract} --rpc-url ${chain} $(if ${dry},--sender 0x73AF3bcf944a6559933396c1577B257e2054D935 -vvvv, --private-key ${PRIVATE_KEY} --verify -vvvv --slow --broadcast)
+# Deploys payload. `make deploy deploy-payload`
+deploy-payload :; 
+	FOUNDRY_PROFILE=${CHAIN} forge script src/AaveV3Horizon_${PAYLOAD}/${PAYLOAD}.s.sol:DeployEthereum \
+		--rpc-url ${CHAIN} --account ${ACCOUNT} --slow --gas-estimate-multiplier 150 \
+		--chain ${CHAIN} --verifier-url ${VERIFIER_URL} \
+		--sig "run()" \
+		$(if ${DRY},, --broadcast --verify) \
 
 # Utilities
 download :; cast etherscan-source --chain ${chain} -d src/etherscan/${chain}_${address} ${address}
