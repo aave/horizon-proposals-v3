@@ -120,11 +120,7 @@ contract AaveV3Horizon_ACREDListing_20260217_PostExecution_Test is
 {
   function setUp() public virtual override {
     super.setUp();
-    vm.skip(true, 'skipping post-execution test');
-    // TODO: pin to block after on-chain execution
-    vm.createSelectFork(vm.rpcUrl('mainnet'));
-    proposal = AaveV3Horizon_ACREDListing_20260217(0xD7b0ed496C468aDb1702D8dFe08383644b57a544);
-    _executeHorizonPayload(address(proposal));
+    vm.createSelectFork(vm.rpcUrl('mainnet'), 24603083);
   }
 
   function test_defaultProposalExecution() public {
