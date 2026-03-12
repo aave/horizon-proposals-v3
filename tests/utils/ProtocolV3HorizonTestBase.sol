@@ -12,6 +12,7 @@ import {AaveV3EthereumHorizonCustom} from 'src/utils/AaveV3EthereumHorizonCustom
 import {HorizonRwaWhitelistHelper} from 'tests/utils/HorizonRwaWhitelistHelper.sol';
 import {HorizonConfigAssertionHelper} from 'tests/utils/HorizonConfigAssertionHelper.sol';
 import {Errors} from 'src/dependencies/Errors.sol';
+import {ISafeAccount} from 'src/dependencies/ISafeAccount.sol';
 
 /**
  * @dev Adapted from ProtocolV3TestBase for the Horizon market (currently at Aave v3.3).
@@ -45,19 +46,22 @@ abstract contract ProtocolV3HorizonTestBase is
    * - diffing the config
    * - checking if the changes are plausible (no conflicting config changes etc)
    * - running an e2e testsuite over all assets
+   * @param reportName the name of the report
+   * @param pool the pool that should be tested
+   * @param executeTx the function that will execute the transaction that is being tested
    */
   function defaultTest_v3_3(
     string memory reportName,
     IPool pool,
-    address payload
-  ) public returns (ReserveConfig[] memory, ReserveConfig[] memory) {
+    function() internal executeTx
+  ) internal returns (ReserveConfig[] memory, ReserveConfig[] memory) {
     string memory beforeString = string(abi.encodePacked(reportName, '_before'));
     ReserveConfig[] memory configBefore = createConfigurationSnapshot(beforeString, pool);
 
     uint256 startGas = gasleft();
 
     vm.startStateDiffRecording();
-    _executeHorizonPayload(payload);
+    executeTx(); // execute the transaction that is being tested
     string memory rawDiff = vm.getStateDiffJson();
 
     uint256 gasUsed = startGas - gasleft();
@@ -278,6 +282,10 @@ abstract contract ProtocolV3HorizonTestBase is
     }
   }
 
+  function _pool() internal pure returns (IPool) {
+    return IPool(AaveV3EthereumHorizonCustom.POOL);
+  }
+
   /**
    * @dev Execute a Horizon payload through the real executor path.
    * HORIZON_EMERGENCY calls HORIZON_EXECUTOR.executeTransaction() which delegatecalls
@@ -490,4 +498,96 @@ abstract contract ProtocolV3HorizonTestBase is
   }
 
   function _setExpectedConfig() internal virtual {}
+
+  // ---------------------------------------------------------------------------
+  // Gnosis Safe multisig transaction helpers
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @dev Execute a transaction as the HORIZON_EMERGENCY multisig.
+   * @param to      The `to` address of the Safe transaction.
+   * @param data    The calldata of the Safe transaction.
+   * @param operation 0 = call, 1 = delegatecall.
+   */
+  function _executeEmergencyMultisigTx(
+    address to,
+    bytes memory data,
+    uint8 operation,
+    uint256 nonce
+  ) internal {
+    _executeSafeTx({
+      safe: AaveV3EthereumHorizonCustom.HORIZON_EMERGENCY,
+      to: to,
+      data: data,
+      operation: operation,
+      nonce: nonce
+    });
+  }
+
+  /**
+   * @dev Execute a transaction as the HORIZON_OPS multisig.
+   * @param to        The `to` address of the Safe transaction.
+   * @param data      The calldata of the Safe transaction.
+   * @param operation 0 = call, 1 = delegatecall.
+   * @param nonce     The Safe nonce to set before execution.
+   */
+  function _executeOpsMultisigTx(
+    address to,
+    bytes memory data,
+    uint8 operation,
+    uint256 nonce
+  ) internal {
+    _executeSafeTx({
+      safe: AaveV3EthereumHorizonCustom.HORIZON_OPS,
+      to: to,
+      data: data,
+      operation: operation,
+      nonce: nonce
+    });
+  }
+
+  /**
+   * @dev Core Safe execution: sets threshold to 1 and nonce, picks the first owner,
+   *      and calls execTransaction with a minimal pre-approved signature.
+   */
+  function _executeSafeTx(
+    address safe,
+    address to,
+    bytes memory data,
+    uint8 operation,
+    uint256 nonce
+  ) internal {
+    // reset signer threshold to 1 (slot 4) and set nonce (slot 5)
+    vm.store(safe, bytes32(uint256(4)), bytes32(uint256(1)));
+    vm.store(safe, bytes32(uint256(5)), bytes32(nonce));
+    address signer = ISafeAccount(safe).getOwners()[0];
+
+    vm.prank(signer);
+    (bool ok, bytes memory ret) = safe.call(
+      abi.encodeCall(
+        ISafeAccount.execTransaction,
+        (
+          to, // to
+          0, // value
+          data,
+          operation,
+          0, // safeTxGas
+          0, // baseGas
+          0, // gasPrice
+          address(0), // gasToken
+          payable(address(0)), // refundReceiver
+          abi.encodePacked(bytes32(uint256(uint160(signer))), bytes32(0), uint8(1)) // r, s, v
+        )
+      )
+    );
+
+    if (!ok) {
+      if (ret.length > 0) {
+        assembly {
+          revert(add(ret, 32), mload(ret))
+        }
+      }
+      revert('_executeSafeTx: unknown error');
+    }
+  }
 }
