@@ -1,0 +1,39 @@
+generator/templates/test.template.ts
+  4c4c0465736a9cd0 7,49
+generator/templates/proposal.template.ts
+  4c4c0465736a9cd0 1,15,55
+src/utils/GovernanceV3EthereumHorizon.sol
+  4c4c0465736a9cd0 1-14
+generator/cli.ts
+  4c4c0465736a9cd0 8,24,183-186,188,193-198,200-203,205-210,248,254,260
+generator/templates/script.template.ts
+  4c4c0465736a9cd0 8,20,78,89
+generator/generator.ts
+  4c4c0465736a9cd0 3,122
+generator/types.ts
+  4c4c0465736a9cd0 62,112-117
+generator/common.ts
+  4c4c0465736a9cd0 71-73
+generator/utils/constants.ts
+  4c4c0465736a9cd0 1,12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "231d3637c5116d815d311550bb88c73e722e4b15",
+  "prompts": {
+    "4c4c0465736a9cd0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0f720ac9-34ca-48b1-ab72-88163d228c9f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "YBM",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 63,
+      "overriden_lines": 2
+    }
+  }
+}
