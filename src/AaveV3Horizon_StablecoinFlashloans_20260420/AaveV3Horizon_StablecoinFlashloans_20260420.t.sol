@@ -2,18 +2,16 @@
 pragma solidity ^0.8.0;
 
 import {IPoolDataProvider} from 'aave-v3-origin/contracts/interfaces/IPoolDataProvider.sol';
+import {IPoolConfigurator} from 'aave-v3-origin/contracts/interfaces/IPoolConfigurator.sol';
 import {ProtocolV3HorizonTestBase, ReserveConfig} from 'tests/utils/ProtocolV3HorizonTestBase.sol';
 import {AaveV3EthereumHorizon, AaveV3EthereumHorizonAssets} from 'aave-address-book-latest/AaveV3EthereumHorizon.sol';
+import {AaveHorizonGovV3Helpers} from 'src/utils/AaveHorizonGovV3Helpers.sol';
 
 /**
- * @dev Test for enabling flashloans on all Horizon stablecoins (GHO, USDC, RLUSD) via multisig transaction.
+ * @dev Test for enabling flashloans on all Horizon stablecoins (GHO, USDC, RLUSD) via OPS multisig.
  * command: FOUNDRY_PROFILE=test forge test --match-contract AaveV3Horizon_StablecoinFlashloans_20260420_Test -vv
  */
 contract AaveV3Horizon_StablecoinFlashloans_20260420_Test is ProtocolV3HorizonTestBase {
-  // TODO: update OPS_DATA with the actual multisend calldata that enables flashloans on all 3 stablecoins
-  address internal constant OPS_TARGET = 0x83Cb1B4af26EEf6463aC20AFbAC9c0e2E017202F;
-  bytes internal constant OPS_DATA =
-    hex'f213ef0e000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb480000000000000000000000000000000000000000000000000000000000000001';
   uint256 internal constant OPS_NONCE = 46;
 
   IPoolDataProvider internal constant DATA_PROVIDER =
@@ -23,8 +21,40 @@ contract AaveV3Horizon_StablecoinFlashloans_20260420_Test is ProtocolV3HorizonTe
     vm.createSelectFork(vm.rpcUrl('mainnet'), 24803845);
   }
 
+  function _buildFlashloanActions()
+    internal
+    pure
+    returns (AaveHorizonGovV3Helpers.Action[] memory)
+  {
+    AaveHorizonGovV3Helpers.Action[] memory actions = new AaveHorizonGovV3Helpers.Action[](3);
+    actions[0] = AaveHorizonGovV3Helpers.Action({
+      to: address(AaveV3EthereumHorizon.POOL_CONFIGURATOR),
+      data: abi.encodeCall(
+        IPoolConfigurator.setReserveFlashLoaning,
+        (AaveV3EthereumHorizonAssets.GHO_UNDERLYING, true)
+      )
+    });
+    actions[1] = AaveHorizonGovV3Helpers.Action({
+      to: address(AaveV3EthereumHorizon.POOL_CONFIGURATOR),
+      data: abi.encodeCall(
+        IPoolConfigurator.setReserveFlashLoaning,
+        (AaveV3EthereumHorizonAssets.USDC_UNDERLYING, true)
+      )
+    });
+    actions[2] = AaveHorizonGovV3Helpers.Action({
+      to: address(AaveV3EthereumHorizon.POOL_CONFIGURATOR),
+      data: abi.encodeCall(
+        IPoolConfigurator.setReserveFlashLoaning,
+        (AaveV3EthereumHorizonAssets.RLUSD_UNDERLYING, true)
+      )
+    });
+    return actions;
+  }
+
   function _executeStablecoinFlashloansUpdate() internal {
-    _executeOpsMultisigTx({to: OPS_TARGET, data: OPS_DATA, operation: 1, nonce: OPS_NONCE});
+    (address to, bytes memory data, uint8 operation) = AaveHorizonGovV3Helpers
+      .createOpsMultisigCalldata(_buildFlashloanActions());
+    _executeOpsMultisigTx({to: to, data: data, operation: operation, nonce: OPS_NONCE});
   }
 
   /**
