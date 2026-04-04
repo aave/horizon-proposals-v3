@@ -292,16 +292,21 @@ abstract contract ProtocolV3HorizonTestBase is
    * the payload. Matches the production multisig execution flow exactly.
    */
   function _executeHorizonPayload(address payload) internal {
-    vm.startPrank(AaveV3EthereumHorizonCustom.HORIZON_EMERGENCY);
+    address safe = AaveV3EthereumHorizonCustom.HORIZON_EMERGENCY;
+    address to = payload;
+    uint8 operation = 0;
+    bytes memory data = abi.encodeWithSignature(
+      'executeTransaction(address,uint256,string,bytes,bool)',
+      to, // target
+      0, // value
+      'execute()', // signature
+      '', // data
+      true // withDelegatecall
+    );
+
+    vm.startPrank(safe);
     (bool success, bytes memory resultData) = AaveV3EthereumHorizonCustom.HORIZON_EXECUTOR.call(
-      abi.encodeWithSignature(
-        'executeTransaction(address,uint256,string,bytes,bool)',
-        payload, // target
-        0, // value
-        'execute()', // signature
-        '', // data
-        true // withDelegatecall
-      )
+      data
     );
     vm.stopPrank();
     if (!success) {
