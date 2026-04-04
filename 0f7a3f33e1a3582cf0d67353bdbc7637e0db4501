@@ -1,0 +1,29 @@
+src/utils/AaveHorizonGovV3Helpers.sol
+  4c4c0465736a9cd0 22,34,51,63,76-92
+src/AaveV3Horizon_RLUSD_PriceFeed_20260404/AaveV3Horizon_RLUSD_PriceFeed_20260404.sol
+  4c4c0465736a9cd0 1-23
+src/AaveV3Horizon_RLUSD_PriceFeed_20260404/AaveV3Horizon_RLUSD_PriceFeed_20260404.t.sol
+  4c4c0465736a9cd0 1-6,8-16,19-20,22-27,29-46,48,50-51,53-56,60-62
+src/AaveV3Horizon_RLUSD_PriceFeed_20260404/AaveV3Horizon_RLUSD_PriceFeed_20260404.s.sol
+  4c4c0465736a9cd0 1-3,6-11,13,15-22,29-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "0f7a3f33e1a3582cf0d67353bdbc7637e0db4501",
+  "prompts": {
+    "4c4c0465736a9cd0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0f720ac9-34ca-48b1-ab72-88163d228c9f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "YBM",
+      "messages": [],
+      "total_additions": 202,
+      "total_deletions": 80,
+      "accepted_lines": 120,
+      "overriden_lines": 22
+    }
+  }
+}
