@@ -19,10 +19,6 @@ abstract contract AaveV3Horizon_ACREDListing_20260217_TestBase is ProtocolV3Hori
     _setExpectedConfig();
   }
 
-  function _pool() internal pure returns (IPool) {
-    return IPool(AaveV3EthereumHorizonCustom.POOL);
-  }
-
   function _setExpectedConfig() internal virtual override {
     expectedAssetConfig = ExpectedAssetConfig({
       underlying: AaveV3EthereumHorizonCustom.ACRED_UNDERLYING,
@@ -75,8 +71,12 @@ contract AaveV3Horizon_ACREDListing_20260217_Test is AaveV3Horizon_ACREDListing_
   /**
    * @dev executes the generic test suite including e2e and config snapshots
    */
+  function _executeACREDListing() internal {
+    _executeHorizonPayload(address(proposal));
+  }
+
   function test_defaultProposalExecution() public virtual {
-    defaultTest_v3_3('AaveV3Horizon_ACREDListing_20260217', _pool(), address(proposal));
+    defaultTest_v3_3('AaveV3Horizon_ACREDListing_20260217', _pool(), _executeACREDListing);
   }
 
   /**
