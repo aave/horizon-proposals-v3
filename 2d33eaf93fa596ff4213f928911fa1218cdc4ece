@@ -1,0 +1,27 @@
+src/utils/AaveHorizonGovV3Helpers.sol
+  4c4c0465736a9cd0 1-101,103-105
+src/AaveV3Horizon_StablecoinFlashloans_20260420/AaveV3Horizon_StablecoinFlashloans_20260420.t.sol
+  4c4c0465736a9cd0 5,8,11,24-53,55-57
+src/AaveV3Horizon_StablecoinFlashloans_20260420/AaveV3Horizon_StablecoinFlashloans_20260420.s.sol
+  4c4c0465736a9cd0 1-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "2d33eaf93fa596ff4213f928911fa1218cdc4ece",
+  "prompts": {
+    "4c4c0465736a9cd0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0f720ac9-34ca-48b1-ab72-88163d228c9f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "YBM",
+      "messages": [],
+      "total_additions": 183,
+      "total_deletions": 7,
+      "accepted_lines": 180,
+      "overriden_lines": 1
+    }
+  }
+}
