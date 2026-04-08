@@ -1,0 +1,25 @@
+src/AaveV3Horizon_RLUSD_PriceFeed_20260404/AaveV3Horizon_RLUSD_PriceFeed_20260404.sol
+  4630b34bbd566371 10,12,16,21-23
+src/AaveV3Horizon_RLUSD_PriceFeed_20260404/AaveV3Horizon_RLUSD_PriceFeed_20260404.t.sol
+  4630b34bbd566371 11,20,42-47,51-56,58-80,83,87-89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "e9889775244cb5f9f0786e7b6cf17ac3c3d6551b",
+  "prompts": {
+    "4630b34bbd566371": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "205a04b5-7c62-4215-9f4d-4e8c1acd3bf6",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "YBM",
+      "messages": [],
+      "total_additions": 65,
+      "total_deletions": 26,
+      "accepted_lines": 49,
+      "overriden_lines": 1
+    }
+  }
+}
