@@ -5,7 +5,7 @@ import {console2 as console} from 'forge-std/console2.sol';
 import {EthereumScript} from 'solidity-utils/contracts/utils/ScriptUtils.sol';
 import {AaveHorizonGovV3Helpers} from 'src/utils/AaveHorizonGovV3Helpers.sol';
 import {AaveV3EthereumHorizonCustom} from 'src/utils/AaveV3EthereumHorizonCustom.sol';
-import {AaveV3Horizon_RLUSD_PriceFeed_20260404} from './AaveV3Horizon_RLUSD_PriceFeed_20260404.sol';
+import {AaveV3Horizon_PriceFeed_20260404} from 'src/AaveV3Horizon_PriceFeed_20260404/AaveV3Horizon_PriceFeed_20260404.sol';
 
 /**
  * @dev Deploy the payload and log Safe-ready calldata for Emergency MS execution.
@@ -14,7 +14,7 @@ import {AaveV3Horizon_RLUSD_PriceFeed_20260404} from './AaveV3Horizon_RLUSD_Pric
 contract DeployEthereum is EthereumScript {
   function run() external {
     vm.startBroadcast();
-    address payload = address(new AaveV3Horizon_RLUSD_PriceFeed_20260404());
+    address payload = address(new AaveV3Horizon_PriceFeed_20260404());
     vm.stopBroadcast();
 
     (address to, bytes memory data, uint8 operation) = AaveHorizonGovV3Helpers

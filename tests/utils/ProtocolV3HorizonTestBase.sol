@@ -9,6 +9,7 @@ import {IPoolAddressesProvider} from 'aave-v3-origin/contracts/interfaces/IPoolA
 import {IPoolConfigurator} from 'aave-v3-origin/contracts/interfaces/IPoolConfigurator.sol';
 import {IACLManager} from 'aave-v3-origin/contracts/interfaces/IACLManager.sol';
 import {AaveV3EthereumHorizonCustom} from 'src/utils/AaveV3EthereumHorizonCustom.sol';
+import {AaveHorizonGovV3Helpers} from 'src/utils/AaveHorizonGovV3Helpers.sol';
 import {HorizonRwaWhitelistHelper} from 'tests/utils/HorizonRwaWhitelistHelper.sol';
 import {HorizonConfigAssertionHelper} from 'tests/utils/HorizonConfigAssertionHelper.sol';
 import {Errors} from 'src/dependencies/Errors.sol';
@@ -292,22 +293,10 @@ abstract contract ProtocolV3HorizonTestBase is
    * the payload. Matches the production multisig execution flow exactly.
    */
   function _executeHorizonPayload(address payload) internal {
-    address safe = AaveV3EthereumHorizonCustom.HORIZON_EMERGENCY;
-    address to = payload;
-    uint8 operation = 0;
-    bytes memory data = abi.encodeWithSignature(
-      'executeTransaction(address,uint256,string,bytes,bool)',
-      to, // target
-      0, // value
-      'execute()', // signature
-      '', // data
-      true // withDelegatecall
-    );
+    (address to, bytes memory data, ) = AaveHorizonGovV3Helpers.createExecutorCalldata(payload);
 
-    vm.startPrank(safe);
-    (bool success, bytes memory resultData) = AaveV3EthereumHorizonCustom.HORIZON_EXECUTOR.call(
-      data
-    );
+    vm.startPrank(AaveV3EthereumHorizonCustom.HORIZON_EMERGENCY);
+    (bool success, bytes memory resultData) = to.call(data);
     vm.stopPrank();
     if (!success) {
       if (resultData.length > 0) {
