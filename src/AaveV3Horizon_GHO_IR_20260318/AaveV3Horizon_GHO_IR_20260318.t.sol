@@ -2,11 +2,11 @@
 pragma solidity ^0.8.0;
 
 import {IDefaultInterestRateStrategyV2} from 'aave-v3-origin/contracts/interfaces/IDefaultInterestRateStrategyV2.sol';
-import {ProtocolV3HorizonTestBase, ReserveConfig} from 'tests/utils/ProtocolV3HorizonTestBase.sol';
-import {AaveV3EthereumHorizon, AaveV3EthereumHorizonAssets} from 'aave-address-book-latest/AaveV3EthereumHorizon.sol';
+import {ProtocolV3HorizonTestBase} from 'tests/utils/ProtocolV3HorizonTestBase.sol';
+import {AaveV3EthereumHorizonAssets} from 'aave-address-book-latest/AaveV3EthereumHorizon.sol';
 
 /**
- * @dev Test for GHO caps update via multisig transaction.
+ * @dev Test for GHO interest rate update via multisig transaction.
  * command: FOUNDRY_PROFILE=test forge test --match-contract AaveV3Horizon_GHO_IR_20260318_Test -vv
  */
 contract AaveV3Horizon_GHO_IR_20260318_Test is ProtocolV3HorizonTestBase {
