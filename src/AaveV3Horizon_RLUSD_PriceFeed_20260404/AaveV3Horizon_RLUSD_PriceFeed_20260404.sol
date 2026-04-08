@@ -7,16 +7,20 @@ import {AaveV3PayloadHorizonEthereum} from 'src/utils/AaveV3PayloadHorizonEthere
 import {IAaveV3ConfigEngine as IEngine} from 'aave-v3-origin/contracts/extensions/v3-config-engine/IAaveV3ConfigEngine.sol';
 
 /**
- * @title RLUSD Price Feed Update on Horizon
+ * @title RLUSD & USDC Price Feed Update on Horizon
  * @author Aave Labs
- * @dev Switch RLUSD oracle to the CAPO adapter (same feed used on AaveV3Ethereum core).
+ * @dev Switch RLUSD and USDC oracles to the CAPO adapters (same feeds used on AaveV3Ethereum core).
  */
 contract AaveV3Horizon_RLUSD_PriceFeed_20260404 is AaveV3PayloadHorizonEthereum {
   function priceFeedsUpdates() public pure override returns (IEngine.PriceFeedUpdate[] memory) {
-    IEngine.PriceFeedUpdate[] memory updates = new IEngine.PriceFeedUpdate[](1);
+    IEngine.PriceFeedUpdate[] memory updates = new IEngine.PriceFeedUpdate[](2);
     updates[0] = IEngine.PriceFeedUpdate({
       asset: AaveV3EthereumHorizonAssets.RLUSD_UNDERLYING,
       priceFeed: AaveV3EthereumAssets.RLUSD_ORACLE
+    });
+    updates[1] = IEngine.PriceFeedUpdate({
+      asset: AaveV3EthereumHorizonAssets.USDC_UNDERLYING,
+      priceFeed: AaveV3EthereumAssets.USDC_ORACLE
     });
     return updates;
   }
