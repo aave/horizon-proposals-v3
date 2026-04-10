@@ -15,13 +15,13 @@ contract AaveV3Horizon_PriceFeed_20260404_Test is ProtocolV3HorizonTestBase {
   AaveV3Horizon_PriceFeed_20260404 internal proposal;
 
   address internal constant OLD_RLUSD_ORACLE = AaveV3EthereumHorizonAssets.RLUSD_ORACLE;
-  address internal constant NEW_RLUSD_ORACLE = AaveV3EthereumAssets.RLUSD_ORACLE; // CAPO adapter
-
   address internal constant OLD_USDC_ORACLE = AaveV3EthereumHorizonAssets.USDC_ORACLE;
-  address internal constant NEW_USDC_ORACLE = AaveV3EthereumAssets.USDC_ORACLE; // CAPO adapter
+
+  address internal constant NEW_RLUSD_ORACLE = 0x9E7c31e9b3C76Ea759D9f7464210353862F0c957; // stable cap adapter
+  address internal constant NEW_USDC_ORACLE = 0x46f94aff8cF7DdC8557eF69f7276087b01C8f363; // stable cap adapter
 
   function setUp() public {
-    vm.createSelectFork(vm.rpcUrl('mainnet'), 24804293);
+    vm.createSelectFork(vm.rpcUrl('mainnet'), 24852499);
     proposal = new AaveV3Horizon_PriceFeed_20260404();
   }
 
@@ -39,21 +39,18 @@ contract AaveV3Horizon_PriceFeed_20260404_Test is ProtocolV3HorizonTestBase {
     IAaveOracle oracle = IAaveOracle(AaveV3EthereumHorizon.ORACLE);
     address RLUSD = AaveV3EthereumHorizonAssets.RLUSD_UNDERLYING;
 
-    // BEFORE: Horizon oracle differs from V3 core
+    // BEFORE
     assertEq(oracle.getSourceOfAsset(RLUSD), OLD_RLUSD_ORACLE, 'RLUSD oracle before');
-    assertTrue(
-      oracle.getSourceOfAsset(RLUSD) != AaveV3EthereumAssets.RLUSD_ORACLE,
+    assertNotEq(
+      oracle.getSourceOfAsset(RLUSD),
+      AaveV3EthereumAssets.RLUSD_ORACLE,
       'RLUSD oracle should differ from V3 core before'
     );
 
     _executePayload();
 
-    // AFTER: Horizon oracle matches V3 core
-    assertEq(
-      oracle.getSourceOfAsset(RLUSD),
-      AaveV3EthereumAssets.RLUSD_ORACLE,
-      'RLUSD oracle after'
-    );
+    // AFTER
+    assertEq(oracle.getSourceOfAsset(RLUSD), NEW_RLUSD_ORACLE, 'RLUSD oracle after');
     uint256 price = oracle.getAssetPrice(RLUSD);
     assertGt(price, 0, 'RLUSD price must be positive');
   }
@@ -65,17 +62,17 @@ contract AaveV3Horizon_PriceFeed_20260404_Test is ProtocolV3HorizonTestBase {
     IAaveOracle oracle = IAaveOracle(AaveV3EthereumHorizon.ORACLE);
     address USDC = AaveV3EthereumHorizonAssets.USDC_UNDERLYING;
 
-    // BEFORE: Horizon oracle differs from V3 core
+    // BEFORE
     assertEq(oracle.getSourceOfAsset(USDC), OLD_USDC_ORACLE, 'USDC oracle before');
     assertTrue(
-      oracle.getSourceOfAsset(USDC) != AaveV3EthereumAssets.USDC_ORACLE,
+      oracle.getSourceOfAsset(USDC) != NEW_USDC_ORACLE,
       'USDC oracle should differ from V3 core before'
     );
 
     _executePayload();
 
-    // AFTER: Horizon oracle matches V3 core
-    assertEq(oracle.getSourceOfAsset(USDC), AaveV3EthereumAssets.USDC_ORACLE, 'USDC oracle after');
+    // AFTER
+    assertEq(oracle.getSourceOfAsset(USDC), NEW_USDC_ORACLE, 'USDC oracle after');
     uint256 price = oracle.getAssetPrice(USDC);
     assertGt(price, 0, 'USDC price must be positive');
   }

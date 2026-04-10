@@ -12,15 +12,17 @@ import {IAaveV3ConfigEngine as IEngine} from 'aave-v3-origin/contracts/extension
  * @dev Switch RLUSD and USDC oracles to the CAPO adapters (same feeds used on AaveV3Ethereum core).
  */
 contract AaveV3Horizon_PriceFeed_20260404 is AaveV3PayloadHorizonEthereum {
+  address internal constant NEW_RLUSD_ORACLE = 0x9E7c31e9b3C76Ea759D9f7464210353862F0c957; // stable cap adapter
+  address internal constant NEW_USDC_ORACLE = 0x46f94aff8cF7DdC8557eF69f7276087b01C8f363; // stable cap adapter
   function priceFeedsUpdates() public pure override returns (IEngine.PriceFeedUpdate[] memory) {
     IEngine.PriceFeedUpdate[] memory updates = new IEngine.PriceFeedUpdate[](2);
     updates[0] = IEngine.PriceFeedUpdate({
       asset: AaveV3EthereumHorizonAssets.RLUSD_UNDERLYING,
-      priceFeed: AaveV3EthereumAssets.RLUSD_ORACLE
+      priceFeed: NEW_RLUSD_ORACLE
     });
     updates[1] = IEngine.PriceFeedUpdate({
       asset: AaveV3EthereumHorizonAssets.USDC_UNDERLYING,
-      priceFeed: AaveV3EthereumAssets.USDC_ORACLE
+      priceFeed: NEW_USDC_ORACLE
     });
     return updates;
   }
