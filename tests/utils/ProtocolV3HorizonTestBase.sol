@@ -287,6 +287,10 @@ abstract contract ProtocolV3HorizonTestBase is
     return IPool(AaveV3EthereumHorizonCustom.POOL);
   }
 
+  function _getProxyImplementation(address proxy) internal view returns (address) {
+    return address(uint160(uint256(vm.load(proxy, EIP1967_IMPL_SLOT))));
+  }
+
   /**
    * @dev Execute a Horizon payload through the real executor path.
    * HORIZON_EMERGENCY calls HORIZON_EXECUTOR.executeTransaction() which delegatecalls
@@ -553,6 +557,7 @@ abstract contract ProtocolV3HorizonTestBase is
   ) internal {
     // reset signer threshold to 1 (slot 4) and set nonce (slot 5)
     vm.store(safe, bytes32(uint256(4)), bytes32(uint256(1)));
+    // force set nonce for simulation
     vm.store(safe, bytes32(uint256(5)), bytes32(nonce));
     address signer = ISafeAccount(safe).getOwners()[0];
 
