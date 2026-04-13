@@ -1,0 +1,23 @@
+src/AaveV3Horizon_UpdateATokens_20260413/AaveV3Horizon_UpdateATokens_20260413.t.sol
+  b68f7a576f2ef275 85,92-93,102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "e0b89f41bb58f8e9257b5efd57c4846ab6f284d9",
+  "prompts": {
+    "b68f7a576f2ef275": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "1e83156f-6c08-48ba-b4b2-f2366d99978b",
+        "model": "gpt-5.3-codex"
+      },
+      "human_author": "YBM",
+      "messages": [],
+      "total_additions": 4,
+      "total_deletions": 3,
+      "accepted_lines": 4,
+      "overriden_lines": 0
+    }
+  }
+}
