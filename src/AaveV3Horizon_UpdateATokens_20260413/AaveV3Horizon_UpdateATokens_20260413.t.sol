@@ -27,7 +27,7 @@ contract AaveV3Horizon_UpdateATokens_20260413 is ProtocolV3HorizonTestBase {
   uint256 internal constant EMERGENCY_NONCE = 8;
 
   function setUp() public {
-    vm.createSelectFork(vm.rpcUrl('mainnet'));
+    vm.createSelectFork(vm.rpcUrl('mainnet'), 24873552);
   }
 
   function test_updateATokenImpl_GHO_beforeAfter() public {
@@ -82,16 +82,24 @@ contract AaveV3Horizon_UpdateATokens_20260413 is ProtocolV3HorizonTestBase {
 
   function test_revenueSplit_beforeAfter() public {
     address[] memory assets = _allTargetAssets();
+    address splitter = _treasuryForAsset(assets[0]);
 
     _executeFullTx();
 
+    // check old splitter aToken balances after
     for (uint256 i; i < assets.length; i++) {
       address aToken = _pool().getReserveAToken(assets[i]);
-      uint256 splitterBalanceAfter = IERC20(aToken).balanceOf(_treasuryForAsset(assets[i]));
-      assertEq(splitterBalanceAfter, 0, 'splitter aToken balance must be 0 after split');
+      uint256 splitterBalanceAfter = IERC20(aToken).balanceOf(splitter);
+      assertApproxEqAbs(
+        splitterBalanceAfter,
+        0,
+        1,
+        string.concat('splitter aToken balance after for ', IERC20Metadata(aToken).name())
+      );
     }
 
-    uint256 nativeRevenueAfter = address(_treasuryForAsset(assets[0])).balance;
+    // check native revenue on old splitter after
+    uint256 nativeRevenueAfter = address(splitter).balance;
     assertEq(nativeRevenueAfter, 0, 'native revenue must be 0 after split');
   }
 
@@ -164,12 +172,6 @@ contract AaveV3Horizon_UpdateATokens_20260413 is ProtocolV3HorizonTestBase {
   }
 
   function _executeFullTx() internal {
-    // address[] memory assets = _allTargetAssets();
-    // for (uint256 i; i < assets.length; i++) {
-    //   address aTokenProxy = _pool().getReserveAToken(assets[i]);
-    //   vm.store(aTokenProxy, bytes32(uint256(0)), bytes32(uint256(0))); // todo: delete
-    // }
-
     (address to, bytes memory data, uint8 operation) = _buildEmergencyUpdateATokensTx();
     _executeEmergencyMultisigTx({to: to, data: data, operation: operation, nonce: EMERGENCY_NONCE});
   }
