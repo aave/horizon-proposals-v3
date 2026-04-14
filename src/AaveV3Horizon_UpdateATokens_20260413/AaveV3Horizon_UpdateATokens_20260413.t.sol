@@ -83,12 +83,35 @@ contract AaveV3Horizon_UpdateATokens_20260413 is ProtocolV3HorizonTestBase {
   }
 
   function test_revenueMint_beforeAfter() public {
+    address oldCollector = address(AaveV3EthereumHorizon.COLLECTOR);
+    address[] memory assets = _allTargetAssets();
+
+    uint256[] memory accruedBefore = new uint256[](assets.length);
+    uint256[] memory oldCollectorScaledBalanceBefore = new uint256[](assets.length);
+
+    for (uint256 i; i < assets.length; i++) {
+      address aToken = _pool().getReserveAToken(assets[i]);
+      accruedBefore[i] = _pool().getReserveData(assets[i]).accruedToTreasury;
+      oldCollectorScaledBalanceBefore[i] = IAToken(aToken).scaledBalanceOf(oldCollector);
+    }
+
     _executeFullTx();
 
-    address[] memory assets = _allTargetAssets();
     for (uint256 i; i < assets.length; i++) {
-      uint256 accruedAfter = _pool().getReserveData(assets[i]).accruedToTreasury;
-      assertEq(accruedAfter, 0, 'accruedToTreasury must be 0 after mint');
+      address aToken = _pool().getReserveAToken(assets[i]);
+      assertEq(
+        _pool().getReserveData(assets[i]).accruedToTreasury,
+        0,
+        'accruedToTreasury must be 0 after mint'
+      );
+      assertEq(
+        IAToken(aToken).scaledBalanceOf(oldCollector) - oldCollectorScaledBalanceBefore[i],
+        accruedBefore[i],
+        string.concat(
+          'old collector scaled balance increase must equal accruedToTreasury before for ',
+          IERC20Metadata(aToken).name()
+        )
+      );
     }
   }
 
