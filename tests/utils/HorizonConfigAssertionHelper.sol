@@ -565,15 +565,11 @@ abstract contract HorizonConfigAssertionHelper is Test {
   }
 
   function _isRwaATokenImpl(address impl) internal pure returns (bool) {
-    return
-      impl == AaveV3EthereumHorizonCustom.RWA_A_TOKEN_IMPL ||
-      impl == 0x8CA2a49c7Df42E67F9A532F0d383D648fB7Fe4C9;
+    return impl == AaveV3EthereumHorizonCustom.RWA_A_TOKEN_IMPL;
   }
 
   function _isStandardATokenImpl(address impl) internal pure returns (bool) {
-    return
-      impl == AaveV3EthereumHorizonCustom.DEFAULT_A_TOKEN_IMPL ||
-      impl == address(AaveV3EthereumHorizon.DEFAULT_A_TOKEN_IMPL);
+    return impl == AaveV3EthereumHorizonCustom.DEFAULT_A_TOKEN_IMPL;
   }
 
   function _toAddressArray(address a) internal pure returns (address[] memory arr) {

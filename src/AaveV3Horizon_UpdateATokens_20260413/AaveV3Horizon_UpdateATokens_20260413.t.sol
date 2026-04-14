@@ -7,7 +7,6 @@ import {IERC20Metadata} from 'openzeppelin-contracts/contracts/interfaces/IERC20
 import {IERC20} from 'aave-v3-origin/contracts/dependencies/openzeppelin/contracts/IERC20.sol';
 import {IRevenueSplitter} from 'aave-v3-origin/contracts/treasury/IRevenueSplitter.sol';
 import {IAToken} from 'aave-v3-origin/contracts/interfaces/IAToken.sol';
-import {ConfiguratorInputTypes} from 'aave-v3-origin/contracts/protocol/libraries/types/ConfiguratorInputTypes.sol';
 import {IncentivizedERC20} from 'aave-v3-origin/contracts/protocol/tokenization/base/IncentivizedERC20.sol';
 import {ATokenInstance} from 'aave-v3-origin/contracts/instances/ATokenInstance.sol';
 import {DataTypes} from 'aave-v3-origin/contracts/protocol/libraries/types/DataTypes.sol';
@@ -16,6 +15,22 @@ import {AaveV3EthereumHorizon, AaveV3EthereumHorizonAssets} from 'aave-address-b
 import {AaveV3Ethereum} from 'aave-address-book-latest/AaveV3Ethereum.sol';
 import {AaveV3EthereumHorizonCustom} from 'src/utils/AaveV3EthereumHorizonCustom.sol';
 import {AaveHorizonGovV3Helpers} from 'src/utils/AaveHorizonGovV3Helpers.sol';
+
+/// @dev Minimal interface for the v3.3 PoolConfigurator's updateAToken, with struct
+/// including treasury + incentivesController (absent in latest v3-origin).
+interface IPoolConfiguratorV3_3 {
+  struct UpdateATokenInput {
+    address asset;
+    address treasury;
+    address incentivesController;
+    string name;
+    string symbol;
+    address implementation;
+    bytes params;
+  }
+
+  function updateAToken(UpdateATokenInput calldata input) external;
+}
 
 /**
  * @dev Test for emergency-ms driven batched aToken implementation updates.
@@ -42,44 +57,13 @@ contract AaveV3Horizon_UpdateATokens_20260413 is ProtocolV3HorizonTestBase {
     defaultTest_v3_3('AaveV3Horizon_UpdateATokens_20260413', _pool(), _executeFullTx);
   }
 
-  function test_updateATokenImpl_GHO_beforeAfter() public {
-    _assertATokenImplUpdated(AaveV3EthereumHorizonAssets.GHO_UNDERLYING, 'GHO');
-  }
-
-  function test_updateATokenImpl_USDC_beforeAfter() public {
-    _assertATokenImplUpdated(AaveV3EthereumHorizonAssets.USDC_UNDERLYING, 'USDC');
-  }
-
-  function test_updateATokenImpl_RLUSD_beforeAfter() public {
-    _assertATokenImplUpdated(AaveV3EthereumHorizonAssets.RLUSD_UNDERLYING, 'RLUSD');
-  }
-
-  function test_updateATokenImpl_USTB_beforeAfter() public {
-    _assertATokenImplUpdated(AaveV3EthereumHorizonAssets.USTB_UNDERLYING, 'USTB');
-  }
-
-  function test_updateATokenImpl_USCC_beforeAfter() public {
-    _assertATokenImplUpdated(AaveV3EthereumHorizonAssets.USCC_UNDERLYING, 'USCC');
-  }
-
-  function test_updateATokenImpl_USYC_beforeAfter() public {
-    _assertATokenImplUpdated(AaveV3EthereumHorizonAssets.USYC_UNDERLYING, 'USYC');
-  }
-
-  function test_updateATokenImpl_JTRSY_beforeAfter() public {
-    _assertATokenImplUpdated(AaveV3EthereumHorizonAssets.JTRSY_UNDERLYING, 'JTRSY');
-  }
-
-  function test_updateATokenImpl_JAAA_beforeAfter() public {
-    _assertATokenImplUpdated(AaveV3EthereumHorizonAssets.JAAA_UNDERLYING, 'JAAA');
-  }
-
-  function test_updateATokenImpl_VBILL_beforeAfter() public {
-    _assertATokenImplUpdated(AaveV3EthereumHorizonAssets.VBILL_UNDERLYING, 'VBILL');
-  }
-
-  function test_updateATokenImpl_ACRED_beforeAfter() public {
-    _assertATokenImplUpdated(AaveV3EthereumHorizonCustom.ACRED_UNDERLYING, 'ACRED');
+  function test_updateATokenImpl_beforeAfter() public {
+    address[] memory assets = _allTargetAssets();
+    for (uint256 i; i < assets.length; i++) {
+      uint256 snap = vm.snapshotState();
+      _assertATokenImplUpdated(assets[i], IERC20Metadata(assets[i]).name());
+      vm.revertToState(snap);
+    }
   }
 
   function test_revenueMint_beforeAfter() public {
@@ -148,7 +132,7 @@ contract AaveV3Horizon_UpdateATokens_20260413 is ProtocolV3HorizonTestBase {
 
     assertNotEq(
       _getATokenImplementation(underlying),
-      _desiredImplForAsset(underlying),
+      _desiredImplForAssetBefore(underlying),
       string.concat('aToken impl should differ before for ', label)
     );
     assertEq(
@@ -162,7 +146,7 @@ contract AaveV3Horizon_UpdateATokens_20260413 is ProtocolV3HorizonTestBase {
 
     assertEq(
       _getATokenImplementation(underlying),
-      _desiredImplForAsset(underlying),
+      _desiredImplForAssetAfter(underlying),
       string.concat('aToken impl mismatch after for ', label)
     );
     assertEq(
@@ -208,8 +192,7 @@ contract AaveV3Horizon_UpdateATokens_20260413 is ProtocolV3HorizonTestBase {
     );
     actions[0] = _buildMintToTreasuryAction(assets);
     for (uint256 i; i < assets.length; i++) {
-      // console.log('asset:', assets[i]);
-      actions[i + 1] = _buildUpdateATokenAction(assets[i], _desiredImplForAsset(assets[i]));
+      actions[i + 1] = _buildUpdateATokenAction(assets[i], _desiredImplForAssetBefore(assets[i]));
     }
     return AaveHorizonGovV3Helpers.createEmergencyMultisigCalldata(actions);
   }
@@ -224,33 +207,19 @@ contract AaveV3Horizon_UpdateATokens_20260413 is ProtocolV3HorizonTestBase {
     address implementation
   ) internal view returns (AaveHorizonGovV3Helpers.Action memory) {
     address aTokenProxy = _pool().getReserveAToken(underlying);
-    ConfiguratorInputTypes.UpdateATokenInput memory input = ConfiguratorInputTypes
-      .UpdateATokenInput({
-        asset: underlying,
-        name: IERC20Metadata(aTokenProxy).name(),
-        symbol: IERC20Metadata(aTokenProxy).symbol(),
-        implementation: implementation,
-        params: bytes('')
-      });
-    address incentivesController = address(
-      IncentivizedERC20(aTokenProxy).getIncentivesController()
-    );
+    IPoolConfiguratorV3_3.UpdateATokenInput memory input = IPoolConfiguratorV3_3.UpdateATokenInput({
+      asset: underlying,
+      treasury: NEW_TREASURY,
+      incentivesController: address(IncentivizedERC20(aTokenProxy).getIncentivesController()),
+      name: IERC20Metadata(aTokenProxy).name(),
+      symbol: IERC20Metadata(aTokenProxy).symbol(),
+      implementation: implementation,
+      params: bytes('')
+    });
     return
       AaveHorizonGovV3Helpers.Action({
         to: address(AaveV3EthereumHorizon.POOL_CONFIGURATOR),
-        data: abi.encodePacked(
-          bytes4(keccak256('updateAToken((address,address,address,string,string,address,bytes))')),
-          abi.encode(uint256(32)),
-          abi.encode(
-            input.asset,
-            NEW_TREASURY,
-            incentivesController,
-            input.name,
-            input.symbol,
-            input.implementation,
-            input.params
-          )
-        )
+        data: abi.encodeCall(IPoolConfiguratorV3_3.updateAToken, (input))
       });
   }
 
@@ -260,8 +229,30 @@ contract AaveV3Horizon_UpdateATokens_20260413 is ProtocolV3HorizonTestBase {
     return
       AaveHorizonGovV3Helpers.Action({
         to: address(AaveV3EthereumHorizon.POOL),
-        data: abi.encodeWithSignature('mintToTreasury(address[])', assets)
+        data: abi.encodeCall(AaveV3EthereumHorizon.POOL.mintToTreasury, (assets))
       });
+  }
+
+  function _desiredImplForAssetBefore(address underlying) internal view returns (address) {
+    address impl = _getATokenImplementation(underlying);
+    if (impl == AaveV3EthereumHorizonCustom.DEFAULT_A_TOKEN_IMPL_PREV) {
+      return A_TOKEN_IMPL;
+    }
+    if (impl == AaveV3EthereumHorizonCustom.RWA_A_TOKEN_IMPL_PREV) {
+      return RWA_A_TOKEN_IMPL;
+    }
+    revert('unknown aToken implementation');
+  }
+
+  function _desiredImplForAssetAfter(address underlying) internal view returns (address) {
+    address impl = _getATokenImplementation(underlying);
+    if (impl == A_TOKEN_IMPL) {
+      return A_TOKEN_IMPL;
+    }
+    if (impl == RWA_A_TOKEN_IMPL) {
+      return RWA_A_TOKEN_IMPL;
+    }
+    revert('unknown aToken implementation');
   }
 
   function _getATokenImplementation(address underlying) internal view returns (address) {
@@ -269,29 +260,12 @@ contract AaveV3Horizon_UpdateATokens_20260413 is ProtocolV3HorizonTestBase {
     return _getProxyImplementation(aTokenProxy);
   }
 
-  function _desiredImplForAsset(address underlying) internal pure returns (address) {
-    if (
-      underlying == AaveV3EthereumHorizonAssets.GHO_UNDERLYING ||
-      underlying == AaveV3EthereumHorizonAssets.USDC_UNDERLYING ||
-      underlying == AaveV3EthereumHorizonAssets.RLUSD_UNDERLYING
-    ) {
-      return A_TOKEN_IMPL;
+  function _allTargetAssets() internal view returns (address[] memory assets) {
+    uint256 reservesCount = _pool().getReservesCount();
+    assets = new address[](reservesCount);
+    for (uint16 i; i < reservesCount; i++) {
+      assets[i] = _pool().getReserveAddressById(i);
     }
-    return RWA_A_TOKEN_IMPL;
-  }
-
-  function _allTargetAssets() internal pure returns (address[] memory assets) {
-    assets = new address[](10);
-    assets[0] = AaveV3EthereumHorizonAssets.GHO_UNDERLYING;
-    assets[1] = AaveV3EthereumHorizonAssets.USDC_UNDERLYING;
-    assets[2] = AaveV3EthereumHorizonAssets.RLUSD_UNDERLYING;
-    assets[3] = AaveV3EthereumHorizonAssets.USTB_UNDERLYING;
-    assets[4] = AaveV3EthereumHorizonAssets.USCC_UNDERLYING;
-    assets[5] = AaveV3EthereumHorizonAssets.USYC_UNDERLYING;
-    assets[6] = AaveV3EthereumHorizonAssets.JTRSY_UNDERLYING;
-    assets[7] = AaveV3EthereumHorizonAssets.JAAA_UNDERLYING;
-    assets[8] = AaveV3EthereumHorizonAssets.VBILL_UNDERLYING;
-    assets[9] = AaveV3EthereumHorizonCustom.ACRED_UNDERLYING;
   }
 
   function assertEq(
@@ -349,7 +323,9 @@ contract AaveV3Horizon_UpdateATokens_20260413 is ProtocolV3HorizonTestBase {
       b.isolationModeTotalDebt,
       string.concat('isolationModeTotalDebt ', label)
     );
-
     assertEq(a.accruedToTreasury, 0, string.concat('accruedToTreasury ', label));
+    // override accruedToTreasury to match the original value, to check the encoded data
+    a.accruedToTreasury = b.accruedToTreasury;
+    assertEq(abi.encode(a), abi.encode(b), string.concat('reserveData ', label));
   }
 }
