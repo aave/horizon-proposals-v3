@@ -1,0 +1,41 @@
+src/AaveV3Horizon_UpdateATokens_20260413/AaveV3Horizon_UpdateATokens_20260413.t.sol
+  b68f7a576f2ef275 212-213
+  a665d6507db23227 21,31-34,61-66,210,222,236-244,247-248,253,255
+src/utils/AaveV3EthereumHorizonCustom.sol
+  a665d6507db23227 25-26,43
+tests/utils/HorizonConfigAssertionHelper.sol
+  a665d6507db23227 568,572
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "1b886fd90cd3f20506b90f8ea2a4cf534e90c8af",
+  "prompts": {
+    "a665d6507db23227": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb5cae30-3434-483e-800d-ff558721e4d4",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "YBM",
+      "messages": [],
+      "total_additions": 91,
+      "total_deletions": 84,
+      "accepted_lines": 52,
+      "overriden_lines": 3
+    },
+    "b68f7a576f2ef275": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "1e83156f-6c08-48ba-b4b2-f2366d99978b",
+        "model": "gpt-5.3-codex"
+      },
+      "human_author": "YBM",
+      "messages": [],
+      "total_additions": 35,
+      "total_deletions": 23,
+      "accepted_lines": 3,
+      "overriden_lines": 0
+    }
+  }
+}
