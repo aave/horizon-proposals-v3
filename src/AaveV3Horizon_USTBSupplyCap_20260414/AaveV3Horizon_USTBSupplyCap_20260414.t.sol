@@ -28,9 +28,9 @@ contract AaveV3Horizon_USTBSupplyCap_20260414 is ProtocolV3HorizonTestBase {
   }
 
   /**
-   * @dev Custom before/after assertions for the USTB caps change.
+   * @dev Custom before/after assertions for the USTB supply cap change.
    */
-  function test_ustbCapsChange() public {
+  function test_ustbSupplyCapChange() public {
     (, uint256 supplyCapBefore) = (
       IPoolDataProvider(AaveV3EthereumHorizon.AAVE_PROTOCOL_DATA_PROVIDER).getReserveCaps(
         AaveV3EthereumHorizonAssets.USTB_UNDERLYING
