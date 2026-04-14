@@ -1,0 +1,23 @@
+src/AaveV3Horizon_USTBSupplyCap_20260414/AaveV3Horizon_USTBSupplyCap_20260414.t.sol
+  a665d6507db23227 7,53-67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "dfb0c3fa28de71de321284a1042fd5913b5893f3",
+  "prompts": {
+    "a665d6507db23227": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb5cae30-3434-483e-800d-ff558721e4d4",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "YBM",
+      "messages": [],
+      "total_additions": 67,
+      "total_deletions": 0,
+      "accepted_lines": 67,
+      "overriden_lines": 0
+    }
+  }
+}
