@@ -33,8 +33,6 @@ abstract contract HorizonConfigAssertionHelper is Test {
   using ReserveConfiguration for DataTypes.ReserveConfigurationMap;
   using EModeConfiguration for uint128;
 
-  address internal constant DEFAULT_A_TOKEN_IMPL = 0x9EB507147b99D3Cde32A53Bd5cd12bDEEaC26E5c;
-
   struct ExpectedAssetConfig {
     address underlying;
     bool isRwa;
@@ -133,7 +131,7 @@ abstract contract HorizonConfigAssertionHelper is Test {
     assertEq(IERC20Metadata(aToken).name(), expected.aTokenName, 'aTokenName');
     assertEq(IERC20Metadata(aToken).symbol(), expected.aTokenSymbol, 'aTokenSymbol');
 
-    address impl = address(uint160(uint256(vm.load(aToken, EIP1967_IMPL_SLOT))));
+    address impl = _getProxyImplementation(aToken);
     if (expected.isRwa) {
       assertEq(impl, AaveV3EthereumHorizonCustom.RWA_A_TOKEN_IMPL, 'rwaATokenImpl');
     } else {
@@ -557,6 +555,10 @@ abstract contract HorizonConfigAssertionHelper is Test {
   }
 
   // ─── Helpers ──────────────────────────────────────────────────────
+
+  function _getProxyImplementation(address proxy) internal view returns (address) {
+    return address(uint160(uint256(vm.load(proxy, EIP1967_IMPL_SLOT))));
+  }
 
   function _toAddressArray(address a) internal pure returns (address[] memory arr) {
     arr = new address[](1);

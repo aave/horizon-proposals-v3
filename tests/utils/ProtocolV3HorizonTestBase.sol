@@ -287,10 +287,6 @@ abstract contract ProtocolV3HorizonTestBase is
     return IPool(AaveV3EthereumHorizonCustom.POOL);
   }
 
-  function _getProxyImplementation(address proxy) internal view returns (address) {
-    return address(uint160(uint256(vm.load(proxy, EIP1967_IMPL_SLOT))));
-  }
-
   /**
    * @dev Execute a Horizon payload through the real executor path.
    * HORIZON_EMERGENCY calls HORIZON_EXECUTOR.executeTransaction() which delegatecalls
