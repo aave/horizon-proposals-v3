@@ -1,0 +1,23 @@
+tests/utils/HorizonConfigAssertionHelper.sol
+  a665d6507db23227 568-570,574-576
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "1d641ad7e129294cc58292fef636f34f35968cae",
+  "prompts": {
+    "a665d6507db23227": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb5cae30-3434-483e-800d-ff558721e4d4",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "YBM",
+      "messages": [],
+      "total_additions": 6,
+      "total_deletions": 2,
+      "accepted_lines": 21,
+      "overriden_lines": 0
+    }
+  }
+}
