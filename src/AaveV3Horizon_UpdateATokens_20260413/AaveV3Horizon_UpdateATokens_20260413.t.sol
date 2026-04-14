@@ -10,6 +10,7 @@ import {IAToken} from 'aave-v3-origin/contracts/interfaces/IAToken.sol';
 import {ConfiguratorInputTypes} from 'aave-v3-origin/contracts/protocol/libraries/types/ConfiguratorInputTypes.sol';
 import {IncentivizedERC20} from 'aave-v3-origin/contracts/protocol/tokenization/base/IncentivizedERC20.sol';
 import {ATokenInstance} from 'aave-v3-origin/contracts/instances/ATokenInstance.sol';
+import {DataTypes} from 'aave-v3-origin/contracts/protocol/libraries/types/DataTypes.sol';
 import {ProtocolV3HorizonTestBase} from 'tests/utils/ProtocolV3HorizonTestBase.sol';
 import {AaveV3EthereumHorizon, AaveV3EthereumHorizonAssets} from 'aave-address-book-latest/AaveV3EthereumHorizon.sol';
 import {AaveV3Ethereum} from 'aave-address-book-latest/AaveV3Ethereum.sol';
@@ -106,12 +107,25 @@ contract AaveV3Horizon_UpdateATokens_20260413 is ProtocolV3HorizonTestBase {
 
   function _assertATokenImplUpdated(address underlying, string memory label) internal {
     address aTokenProxy = _pool().getReserveAToken(underlying);
-    address desiredImpl = _desiredImplForAsset(underlying);
-    address implBefore = _getATokenImplementation(underlying);
+
+    // IAToken
+    bytes32 domainSeparator = IAToken(aTokenProxy).DOMAIN_SEPARATOR();
+    address underlyingAsset = IAToken(aTokenProxy).UNDERLYING_ASSET_ADDRESS();
+    uint256 scaledTotalSupply = IAToken(aTokenProxy).scaledTotalSupply();
+
+    // IncentivizedERC20
+    string memory name = IncentivizedERC20(aTokenProxy).name();
+    string memory symbol = IncentivizedERC20(aTokenProxy).symbol();
+    uint256 decimals = IncentivizedERC20(aTokenProxy).decimals();
+    address incentivesController = address(
+      IncentivizedERC20(aTokenProxy).getIncentivesController()
+    );
+    uint256 totalSupply = IncentivizedERC20(aTokenProxy).totalSupply();
+    DataTypes.ReserveDataLegacy memory reserveData = _pool().getReserveData(underlying);
 
     assertNotEq(
-      implBefore,
-      desiredImpl,
+      _getATokenImplementation(underlying),
+      _desiredImplForAsset(underlying),
       string.concat('aToken impl should differ before for ', label)
     );
     assertEq(
@@ -119,22 +133,40 @@ contract AaveV3Horizon_UpdateATokens_20260413 is ProtocolV3HorizonTestBase {
       address(AaveV3EthereumHorizon.COLLECTOR)
     );
     assertNotEq(IAToken(aTokenProxy).RESERVE_TREASURY_ADDRESS(), NEW_TREASURY);
-    assertEq(ATokenInstance(implBefore).ATOKEN_REVISION(), 2);
+    assertEq(ATokenInstance(_getATokenImplementation(underlying)).ATOKEN_REVISION(), 2);
 
     _executeFullTx();
 
-    address implAfter = _getATokenImplementation(underlying);
-    assertEq(implAfter, desiredImpl, string.concat('aToken impl mismatch after for ', label));
+    assertEq(
+      _getATokenImplementation(underlying),
+      _desiredImplForAsset(underlying),
+      string.concat('aToken impl mismatch after for ', label)
+    );
     assertEq(
       IAToken(aTokenProxy).RESERVE_TREASURY_ADDRESS(),
       NEW_TREASURY,
       string.concat('treasury mismatch after for ', label)
     );
     assertEq(
-      ATokenInstance(implAfter).ATOKEN_REVISION(),
+      ATokenInstance(_getATokenImplementation(underlying)).ATOKEN_REVISION(),
       3,
       string.concat('aToken revision mismatch after for ', label)
     );
+    // can increase from mintToTreasury
+    assertGe(IncentivizedERC20(aTokenProxy).totalSupply(), totalSupply, 'totalSupply');
+    assertGe(IAToken(aTokenProxy).scaledTotalSupply(), scaledTotalSupply, 'scaledTotalSupply');
+    // unchanged fields
+    assertEq(IncentivizedERC20(aTokenProxy).name(), name, 'name');
+    assertEq(IncentivizedERC20(aTokenProxy).symbol(), symbol, 'symbol');
+    assertEq(IncentivizedERC20(aTokenProxy).decimals(), decimals, 'decimals');
+    assertEq(
+      address(IncentivizedERC20(aTokenProxy).getIncentivesController()),
+      incentivesController,
+      'incentivesController'
+    );
+    assertEq(IAToken(aTokenProxy).DOMAIN_SEPARATOR(), domainSeparator, 'domainSeparator');
+    assertEq(IAToken(aTokenProxy).UNDERLYING_ASSET_ADDRESS(), underlyingAsset, 'underlying');
+    assertEq(_pool().getReserveData(underlying), reserveData, name);
   }
 
   function _treasuryForAsset(address underlying) internal view returns (address) {
@@ -237,5 +269,64 @@ contract AaveV3Horizon_UpdateATokens_20260413 is ProtocolV3HorizonTestBase {
     assets[7] = AaveV3EthereumHorizonAssets.JAAA_UNDERLYING;
     assets[8] = AaveV3EthereumHorizonAssets.VBILL_UNDERLYING;
     assets[9] = AaveV3EthereumHorizonCustom.ACRED_UNDERLYING;
+  }
+
+  function assertEq(
+    DataTypes.ReserveDataLegacy memory a,
+    DataTypes.ReserveDataLegacy memory b,
+    string memory label
+  ) internal pure {
+    assertEq(a.configuration.data, b.configuration.data, string.concat('configuration ', label));
+    assertEq(a.liquidityIndex, b.liquidityIndex, string.concat('liquidityIndex ', label));
+    assertEq(
+      a.currentLiquidityRate,
+      b.currentLiquidityRate,
+      string.concat('currentLiquidityRate ', label)
+    );
+    assertEq(
+      a.variableBorrowIndex,
+      b.variableBorrowIndex,
+      string.concat('variableBorrowIndex ', label)
+    );
+    assertEq(
+      a.currentVariableBorrowRate,
+      b.currentVariableBorrowRate,
+      string.concat('currentVariableBorrowRate ', label)
+    );
+    assertEq(
+      a.currentStableBorrowRate,
+      b.currentStableBorrowRate,
+      string.concat('currentStableBorrowRate ', label)
+    );
+    assertEq(
+      a.lastUpdateTimestamp,
+      b.lastUpdateTimestamp,
+      string.concat('lastUpdateTimestamp ', label)
+    );
+    assertEq(a.id, b.id, string.concat('id ', label));
+    assertEq(a.aTokenAddress, b.aTokenAddress, string.concat('aTokenAddress ', label));
+    assertEq(
+      a.stableDebtTokenAddress,
+      b.stableDebtTokenAddress,
+      string.concat('stableDebtTokenAddress ', label)
+    );
+    assertEq(
+      a.variableDebtTokenAddress,
+      b.variableDebtTokenAddress,
+      string.concat('variableDebtTokenAddress ', label)
+    );
+    assertEq(
+      a.interestRateStrategyAddress,
+      b.interestRateStrategyAddress,
+      string.concat('interestRateStrategyAddress ', label)
+    );
+    assertEq(a.unbacked, b.unbacked, string.concat('unbacked ', label));
+    assertEq(
+      a.isolationModeTotalDebt,
+      b.isolationModeTotalDebt,
+      string.concat('isolationModeTotalDebt ', label)
+    );
+
+    assertEq(a.accruedToTreasury, 0, string.concat('accruedToTreasury ', label));
   }
 }

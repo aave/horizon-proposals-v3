@@ -552,8 +552,6 @@ abstract contract HorizonConfigAssertionHelper is Test {
     map.setLiquidationProtocolFee(expected.liqProtocolFee);
   }
 
-  // ─── Helpers ──────────────────────────────────────────────────────
-
   function _getProxyImplementation(address proxy) internal view returns (address) {
     return address(uint160(uint256(vm.load(proxy, EIP1967_IMPL_SLOT))));
   }
