@@ -33,6 +33,8 @@ abstract contract HorizonConfigAssertionHelper is Test {
   using ReserveConfiguration for DataTypes.ReserveConfigurationMap;
   using EModeConfiguration for uint128;
 
+  address internal constant DEFAULT_A_TOKEN_IMPL = 0x9EB507147b99D3Cde32A53Bd5cd12bDEEaC26E5c;
+
   struct ExpectedAssetConfig {
     address underlying;
     bool isRwa;

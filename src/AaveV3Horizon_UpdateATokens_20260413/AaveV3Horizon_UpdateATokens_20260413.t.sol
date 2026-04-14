@@ -34,6 +34,13 @@ contract AaveV3Horizon_UpdateATokens_20260413 is ProtocolV3HorizonTestBase {
     vm.createSelectFork(vm.rpcUrl('mainnet'), 24873552);
   }
 
+  /**
+   * @dev Full test suite: snapshots, state diff, validations, e2e.
+   */
+  function test_defaultProposalExecution() public {
+    defaultTest_v3_3('AaveV3Horizon_UpdateATokens_20260413', _pool(), _executeFullTx);
+  }
+
   function test_updateATokenImpl_GHO_beforeAfter() public {
     _assertATokenImplUpdated(AaveV3EthereumHorizonAssets.GHO_UNDERLYING, 'GHO');
   }
@@ -84,9 +91,10 @@ contract AaveV3Horizon_UpdateATokens_20260413 is ProtocolV3HorizonTestBase {
     }
   }
 
-  /// @dev Prints Safe tx fields and calldata for manual copy/paste.
-  function test_printEmergencyUpdateATokensCalldata() public view {
+  function test_calldata() public view {
     (address to, bytes memory data, uint8 operation) = _buildEmergencyUpdateATokensTx();
+    assertEq(data, EMERGENCY_DATA, 'emergency MS tx data mismatch');
+
     console.log('=== Safe Transaction ===');
     console.log('safe:', AaveV3EthereumHorizonCustom.HORIZON_EMERGENCY);
     console.log('to:', to);
@@ -153,8 +161,6 @@ contract AaveV3Horizon_UpdateATokens_20260413 is ProtocolV3HorizonTestBase {
 
   function _executeFullTx() internal {
     (address to, bytes memory data, uint8 operation) = _buildEmergencyUpdateATokensTx();
-
-    assertEq(data, EMERGENCY_DATA, 'emergency MS tx data mismatch');
     _executeEmergencyMultisigTx({to: to, data: data, operation: operation, nonce: EMERGENCY_NONCE});
   }
 
