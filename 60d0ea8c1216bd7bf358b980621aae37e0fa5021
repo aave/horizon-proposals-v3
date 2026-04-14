@@ -1,0 +1,23 @@
+tests/utils/HorizonConfigAssertionHelper.sol
+  b68f7a576f2ef275 37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "60d0ea8c1216bd7bf358b980621aae37e0fa5021",
+  "prompts": {
+    "b68f7a576f2ef275": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "1e83156f-6c08-48ba-b4b2-f2366d99978b",
+        "model": "gpt-5.3-codex"
+      },
+      "human_author": "YBM",
+      "messages": [],
+      "total_additions": 18,
+      "total_deletions": 3,
+      "accepted_lines": 3,
+      "overriden_lines": 3
+    }
+  }
+}
