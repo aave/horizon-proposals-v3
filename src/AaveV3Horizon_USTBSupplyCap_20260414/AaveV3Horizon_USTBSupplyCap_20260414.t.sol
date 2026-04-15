@@ -51,7 +51,7 @@ contract AaveV3Horizon_USTBSupplyCap_20260414 is ProtocolV3HorizonTestBase {
     assertEq(supplyCapAfter, 6_000_000, 'Supply cap after');
   }
 
-  function test_calldata() public view {
+  function test_calldata() public pure {
     AaveHorizonGovV3Helpers.Action memory action = AaveHorizonGovV3Helpers.Action({
       to: address(AaveV3EthereumHorizon.POOL_CONFIGURATOR),
       data: abi.encodeCall(
