@@ -409,8 +409,7 @@ abstract contract ProtocolV3HorizonTestBase is
   }
 
   function _isRwaToken(ReserveConfig memory config) internal view returns (bool) {
-    address impl = address(uint160(uint256(vm.load(config.aToken, EIP1967_IMPL_SLOT))));
-    return impl == AaveV3EthereumHorizonCustom.RWA_A_TOKEN_IMPL;
+    return _isRwaAToken(config.aToken);
   }
 
   function _enableIfEMode(ReserveConfig memory config, IPool pool, address user) internal {
@@ -553,6 +552,7 @@ abstract contract ProtocolV3HorizonTestBase is
   ) internal {
     // reset signer threshold to 1 (slot 4) and set nonce (slot 5)
     vm.store(safe, bytes32(uint256(4)), bytes32(uint256(1)));
+    // force set nonce for simulation
     vm.store(safe, bytes32(uint256(5)), bytes32(nonce));
     address signer = ISafeAccount(safe).getOwners()[0];
 
