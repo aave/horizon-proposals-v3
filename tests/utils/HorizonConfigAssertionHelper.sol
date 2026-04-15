@@ -131,11 +131,11 @@ abstract contract HorizonConfigAssertionHelper is Test {
     assertEq(IERC20Metadata(aToken).name(), expected.aTokenName, 'aTokenName');
     assertEq(IERC20Metadata(aToken).symbol(), expected.aTokenSymbol, 'aTokenSymbol');
 
-    address impl = address(uint160(uint256(vm.load(aToken, EIP1967_IMPL_SLOT))));
+    address impl = _getProxyImplementation(aToken);
     if (expected.isRwa) {
-      assertEq(impl, AaveV3EthereumHorizonCustom.RWA_A_TOKEN_IMPL, 'rwaATokenImpl');
+      assertTrue(_isRwaATokenImpl(impl), 'rwaATokenImpl');
     } else {
-      assertEq(impl, AaveV3EthereumHorizonCustom.DEFAULT_A_TOKEN_IMPL, 'aTokenImpl');
+      assertTrue(_isStandardATokenImpl(impl), 'aTokenImpl');
     }
 
     assertEq(
@@ -411,9 +411,9 @@ abstract contract HorizonConfigAssertionHelper is Test {
 
   function _validateATokenImplementations(ReserveConfig[] memory configs) internal {
     for (uint256 i; i < configs.length; i++) {
-      address impl = address(uint160(uint256(vm.load(configs[i].aToken, EIP1967_IMPL_SLOT))));
-      bool isRwa = impl == AaveV3EthereumHorizonCustom.RWA_A_TOKEN_IMPL;
-      bool isStandard = impl == AaveV3EthereumHorizonCustom.DEFAULT_A_TOKEN_IMPL;
+      address impl = _getProxyImplementation(configs[i].aToken);
+      bool isRwa = _isRwaATokenImpl(impl);
+      bool isStandard = _isStandardATokenImpl(impl);
       assertTrue(
         isRwa || isStandard,
         string.concat('VALIDATION: unknown aToken impl for ', configs[i].symbol)
@@ -445,8 +445,7 @@ abstract contract HorizonConfigAssertionHelper is Test {
 
   function _validateRwaOracleRegistrations(ReserveConfig[] memory configs) internal view {
     for (uint256 i; i < configs.length; i++) {
-      address impl = address(uint160(uint256(vm.load(configs[i].aToken, EIP1967_IMPL_SLOT))));
-      if (impl == AaveV3EthereumHorizonCustom.RWA_A_TOKEN_IMPL) {
+      if (_isRwaAToken(configs[i].aToken)) {
         assertTrue(
           IRwaOracleParameterRegistry(AaveV3EthereumHorizonCustom.RWA_ORACLE_PARAMS_REGISTRY)
             .assetExists(configs[i].underlying),
@@ -498,8 +497,7 @@ abstract contract HorizonConfigAssertionHelper is Test {
     address aToken = pool.getReserveAToken(underlying);
     c.aTokenName = IERC20Metadata(aToken).name();
     c.aTokenSymbol = IERC20Metadata(aToken).symbol();
-    address impl = address(uint160(uint256(vm.load(aToken, EIP1967_IMPL_SLOT))));
-    c.isRwa = (impl == AaveV3EthereumHorizonCustom.RWA_A_TOKEN_IMPL);
+    c.isRwa = _isRwaAToken(aToken);
 
     // variable debt token
     address vDebt = pool.getReserveVariableDebtToken(underlying);
@@ -554,7 +552,29 @@ abstract contract HorizonConfigAssertionHelper is Test {
     map.setLiquidationProtocolFee(expected.liqProtocolFee);
   }
 
-  // ─── Helpers ──────────────────────────────────────────────────────
+  function _getProxyImplementation(address proxy) internal view returns (address) {
+    return address(uint160(uint256(vm.load(proxy, EIP1967_IMPL_SLOT))));
+  }
+
+  function _isKnownATokenImpl(address impl) internal pure returns (bool) {
+    return _isRwaATokenImpl(impl) || _isStandardATokenImpl(impl);
+  }
+
+  function _isRwaAToken(address aToken) internal view returns (bool) {
+    return _isRwaATokenImpl(_getProxyImplementation(aToken));
+  }
+
+  function _isRwaATokenImpl(address impl) internal pure returns (bool) {
+    return
+      impl == AaveV3EthereumHorizonCustom.RWA_A_TOKEN_IMPL ||
+      impl == AaveV3EthereumHorizonCustom.RWA_A_TOKEN_IMPL_PREV;
+  }
+
+  function _isStandardATokenImpl(address impl) internal pure returns (bool) {
+    return
+      impl == AaveV3EthereumHorizonCustom.DEFAULT_A_TOKEN_IMPL ||
+      impl == AaveV3EthereumHorizonCustom.DEFAULT_A_TOKEN_IMPL_PREV;
+  }
 
   function _toAddressArray(address a) internal pure returns (address[] memory arr) {
     arr = new address[](1);
