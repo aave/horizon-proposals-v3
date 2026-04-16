@@ -1,0 +1,23 @@
+scripts/SplitHorizonRevenue.s.sol
+  22c98989d95be702 26,32,34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "f865ca39c609c699da60ba19b9499c727f48232f",
+  "prompts": {
+    "22c98989d95be702": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d5d507df-6730-4d8b-8ec8-2220f2add0ca",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "YBM",
+      "messages": [],
+      "total_additions": 37,
+      "total_deletions": 5,
+      "accepted_lines": 3,
+      "overriden_lines": 5
+    }
+  }
+}
