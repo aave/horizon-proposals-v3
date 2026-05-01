@@ -1,0 +1,14 @@
+src/AaveV3Horizon_RLUSDSupplyCap_20260430/AaveV3Horizon_RLUSDSupplyCap_20260430.t.sol
+  h_ac33fd5bdc4037 1-72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "0786eb5c191892c2e200b66169d15de8315ff6fc",
+  "prompts": {},
+  "humans": {
+    "h_ac33fd5bdc4037": {
+      "author": "YBM"
+    }
+  }
+}
