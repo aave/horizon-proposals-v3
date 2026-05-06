@@ -9,6 +9,7 @@ import {IPoolAddressesProvider} from 'aave-v3-origin/contracts/interfaces/IPoolA
 import {IPoolConfigurator} from 'aave-v3-origin/contracts/interfaces/IPoolConfigurator.sol';
 import {IACLManager} from 'aave-v3-origin/contracts/interfaces/IACLManager.sol';
 import {AaveV3EthereumHorizonCustom} from 'src/utils/AaveV3EthereumHorizonCustom.sol';
+import {AaveHorizonGovV3Helpers} from 'src/utils/AaveHorizonGovV3Helpers.sol';
 import {HorizonRwaWhitelistHelper} from 'tests/utils/HorizonRwaWhitelistHelper.sol';
 import {HorizonConfigAssertionHelper} from 'tests/utils/HorizonConfigAssertionHelper.sol';
 import {Errors} from 'src/dependencies/Errors.sol';
@@ -292,17 +293,10 @@ abstract contract ProtocolV3HorizonTestBase is
    * the payload. Matches the production multisig execution flow exactly.
    */
   function _executeHorizonPayload(address payload) internal {
+    (address to, bytes memory data, ) = AaveHorizonGovV3Helpers.createExecutorCalldata(payload);
+
     vm.startPrank(AaveV3EthereumHorizonCustom.HORIZON_EMERGENCY);
-    (bool success, bytes memory resultData) = AaveV3EthereumHorizonCustom.HORIZON_EXECUTOR.call(
-      abi.encodeWithSignature(
-        'executeTransaction(address,uint256,string,bytes,bool)',
-        payload, // target
-        0, // value
-        'execute()', // signature
-        '', // data
-        true // withDelegatecall
-      )
-    );
+    (bool success, bytes memory resultData) = to.call(data);
     vm.stopPrank();
     if (!success) {
       if (resultData.length > 0) {
@@ -415,8 +409,7 @@ abstract contract ProtocolV3HorizonTestBase is
   }
 
   function _isRwaToken(ReserveConfig memory config) internal view returns (bool) {
-    address impl = address(uint160(uint256(vm.load(config.aToken, EIP1967_IMPL_SLOT))));
-    return impl == AaveV3EthereumHorizonCustom.RWA_A_TOKEN_IMPL;
+    return _isRwaAToken(config.aToken);
   }
 
   function _enableIfEMode(ReserveConfig memory config, IPool pool, address user) internal {
@@ -559,6 +552,7 @@ abstract contract ProtocolV3HorizonTestBase is
   ) internal {
     // reset signer threshold to 1 (slot 4) and set nonce (slot 5)
     vm.store(safe, bytes32(uint256(4)), bytes32(uint256(1)));
+    // force set nonce for simulation
     vm.store(safe, bytes32(uint256(5)), bytes32(nonce));
     address signer = ISafeAccount(safe).getOwners()[0];
 

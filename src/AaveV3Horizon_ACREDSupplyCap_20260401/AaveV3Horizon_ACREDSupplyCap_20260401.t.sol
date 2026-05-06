@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import {IPoolConfigurator} from 'aave-v3-origin/contracts/interfaces/IPoolConfigurator.sol';
 import {IPoolDataProvider} from 'aave-v3-origin/contracts/interfaces/IPoolDataProvider.sol';
 import {ProtocolV3HorizonTestBase, ReserveConfig} from 'tests/utils/ProtocolV3HorizonTestBase.sol';
 import {AaveV3EthereumHorizon} from 'aave-address-book-latest/AaveV3EthereumHorizon.sol';
 import {AaveV3EthereumHorizonCustom} from 'src/utils/AaveV3EthereumHorizonCustom.sol';
+import {AaveHorizonGovV3Helpers} from 'src/utils/AaveHorizonGovV3Helpers.sol';
 
 /**
  * @dev Test for GHO caps update via multisig transaction.
@@ -59,5 +61,25 @@ contract AaveV3Horizon_ACREDSupplyCap_20260401 is ProtocolV3HorizonTestBase {
       )
     );
     assertEq(supplyCapAfter, 1, 'Supply cap after');
+  }
+
+  /// @dev Validate that OPS constants match the generated calldata.
+  function test_calldataMatchesGenerated() public pure {
+    AaveHorizonGovV3Helpers.Action[] memory actions = new AaveHorizonGovV3Helpers.Action[](1);
+    actions[0] = AaveHorizonGovV3Helpers.Action({
+      to: address(AaveV3EthereumHorizon.POOL_CONFIGURATOR),
+      data: abi.encodeWithSelector(
+        IPoolConfigurator.setSupplyCap.selector,
+        AaveV3EthereumHorizonCustom.ACRED_UNDERLYING,
+        1
+      )
+    });
+
+    (address to, bytes memory data, uint8 operation) = AaveHorizonGovV3Helpers
+      .createOpsMultisigCalldata(actions);
+
+    assertEq(to, OPS_TARGET, 'OPS_TARGET mismatch');
+    assertEq(data, OPS_DATA, 'OPS_DATA mismatch');
+    assertEq(operation, OPS_OPERATION, 'OPS_OPERATION mismatch');
   }
 }

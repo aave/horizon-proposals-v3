@@ -11,9 +11,9 @@ test   :; forge test -vvv
 
 test-contract :; forge test --match-contract ${filter} -vv
 
-# Deploys payload. `make deploy deploy-payload`
+# Deploys payload. `make deploy-payload`
 deploy-payload :; 
-	FOUNDRY_PROFILE=${CHAIN} forge script src/AaveV3Horizon_${PAYLOAD}/${PAYLOAD}.s.sol:DeployEthereum \
+	FOUNDRY_PROFILE=${CHAIN} forge script src/${PAYLOAD}/${PAYLOAD}.s.sol:DeployEthereum \
 		--rpc-url ${CHAIN} --account ${ACCOUNT} --slow --gas-estimate-multiplier 150 \
 		--chain ${CHAIN} --verifier-url ${VERIFIER_URL} \
 		--sig "run()" \

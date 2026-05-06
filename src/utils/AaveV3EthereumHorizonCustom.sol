@@ -21,7 +21,8 @@ library AaveV3EthereumHorizonCustom {
 
   // from AaveV3EthereumHorizon address book
   address internal constant POOL = address(AaveV3EthereumHorizon.POOL);
-  address internal constant DEFAULT_A_TOKEN_IMPL =
+  address internal constant DEFAULT_A_TOKEN_IMPL = 0x9EB507147b99D3Cde32A53Bd5cd12bDEEaC26E5c;
+  address internal constant DEFAULT_A_TOKEN_IMPL_PREV =
     address(AaveV3EthereumHorizon.DEFAULT_A_TOKEN_IMPL);
   address internal constant DEFAULT_VARIABLE_DEBT_TOKEN_IMPL =
     address(AaveV3EthereumHorizon.DEFAULT_VARIABLE_DEBT_TOKEN_IMPL);
@@ -37,8 +38,9 @@ library AaveV3EthereumHorizonCustom {
   // horizon deployments
   // https://etherscan.io/address/0x30dA3a613c5b492BB4277Aa2a5D81f4759Ba83Af
   address internal constant CONFIG_ENGINE = 0x30dA3a613c5b492BB4277Aa2a5D81f4759Ba83Af;
-  // https://etherscan.io/address/0x8CA2a49c7Df42E67F9A532F0d383D648fB7Fe4C9
-  address internal constant RWA_A_TOKEN_IMPL = 0x8CA2a49c7Df42E67F9A532F0d383D648fB7Fe4C9;
+  // https://etherscan.io/address/0x5148d810B1DaE509d68f9d9219AD1d004EA32545
+  address internal constant RWA_A_TOKEN_IMPL = 0x5148d810B1DaE509d68f9d9219AD1d004EA32545;
+  address internal constant RWA_A_TOKEN_IMPL_PREV = 0x8CA2a49c7Df42E67F9A532F0d383D648fB7Fe4C9;
   // https://etherscan.io/address/0x87593272C06f4FC49EC2942eBda0972d2F1Ab521
   address internal constant DEFAULT_INTEREST_RATE_STRATEGY =
     0x87593272C06f4FC49EC2942eBda0972d2F1Ab521;
