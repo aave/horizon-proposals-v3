@@ -1,0 +1,16 @@
+tests/utils/HorizonConfigAssertionHelper.sol
+  h_71908bb6884da4 356
+src/AaveV3Horizon_PriceFeed_20260404/AaveV3Horizon_PriceFeed_20260404.sol
+  h_71908bb6884da4 12,15-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "19658f9084d98469f727193917f0609df5c804c4",
+  "prompts": {},
+  "humans": {
+    "h_71908bb6884da4": {
+      "author": "YBM <31329384+yan-man@users.noreply.github.com>"
+    }
+  }
+}
