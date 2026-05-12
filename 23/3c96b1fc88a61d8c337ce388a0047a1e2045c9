@@ -1,0 +1,36 @@
+src/AaveV3Horizon_PriceFeed_20260404/AaveV3Horizon_PriceFeed_20260404.t.sol
+  s_141d8d8db13c6f::t_f6b1386208f4de 35
+  s_141d8d8db13c6f::t_a750c7b5441b32 21,37,70,150
+  s_141d8d8db13c6f::t_8b5795f1027284 24,116,121,125
+  h_71908bb6884da4 33,48,52,81,143-147
+  s_141d8d8db13c6f::t_8502da5bcffb9f 34,38
+  s_141d8d8db13c6f::t_eba92427b776c6 49,65,71-77,93,99-100
+  s_141d8d8db13c6f::t_26b8d60d8bc71e 22,90,98,153
+  s_141d8d8db13c6f::t_3b9f5f3691ed42 113-115,117-120,122-124,126-130,132-135,137-139,141-142
+  s_141d8d8db13c6f::t_da948bf78753c3 25,131,136,140
+  s_141d8d8db13c6f::t_0e4794423e8159 8
+  s_141d8d8db13c6f::t_abe46a736cc717 26-28,36
+src/interfaces/IPriceCapAdapterStable.sol
+  s_141d8d8db13c6f::t_bfcdd4fc6db602 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "233c96b1fc88a61d8c337ce388a0047a1e2045c9",
+  "prompts": {},
+  "humans": {
+    "h_71908bb6884da4": {
+      "author": "YBM <31329384+yan-man@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_141d8d8db13c6f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eb728756-fdf8-4391-b18e-9cab20a0e606",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "YBM <31329384+yan-man@users.noreply.github.com>"
+    }
+  }
+}
