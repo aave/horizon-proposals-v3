@@ -5,6 +5,7 @@ import {IAaveOracle} from 'aave-v3-origin/contracts/interfaces/IAaveOracle.sol';
 import {ProtocolV3HorizonTestBase, ReserveConfig} from 'tests/utils/ProtocolV3HorizonTestBase.sol';
 import {AaveV3EthereumHorizon, AaveV3EthereumHorizonAssets} from 'aave-address-book-latest/AaveV3EthereumHorizon.sol';
 import {AaveV3Ethereum, AaveV3EthereumAssets} from 'aave-address-book-latest/AaveV3Ethereum.sol';
+import {ChainlinkEthereum} from 'aave-address-book/ChainlinkEthereum.sol';
 import {IPriceCapAdapterStable} from 'src/interfaces/IPriceCapAdapterStable.sol';
 import {AaveV3Horizon_PriceFeed_20260404} from './AaveV3Horizon_PriceFeed_20260404.sol';
 
@@ -120,7 +121,12 @@ contract AaveV3Horizon_PriceFeed_20260404_Test is ProtocolV3HorizonTestBase {
     assertEq(
       rlusdAdapter.ASSET_TO_USD_AGGREGATOR(),
       AaveV3EthereumHorizonAssets.RLUSD_ORACLE,
-      'RLUSD adapter underlying must be Horizon non-SVR Chainlink feed'
+      'RLUSD adapter underlying must be Horizon feed'
+    );
+    assertEq(
+      rlusdAdapter.ASSET_TO_USD_AGGREGATOR(),
+      ChainlinkEthereum.RLUSD_USD,
+      'RLUSD adapter underlying must equal the non-SVR Chainlink RLUSD/USD feed'
     );
     assertEq(rlusdAdapter.getPriceCap(), EXPECTED_PRICE_CAP, 'RLUSD adapter price cap mismatch');
   }
@@ -135,7 +141,12 @@ contract AaveV3Horizon_PriceFeed_20260404_Test is ProtocolV3HorizonTestBase {
     assertEq(
       usdcAdapter.ASSET_TO_USD_AGGREGATOR(),
       AaveV3EthereumHorizonAssets.USDC_ORACLE,
-      'USDC adapter underlying must be Horizon non-SVR Chainlink feed'
+      'USDC adapter underlying must be Horizon feed'
+    );
+    assertEq(
+      usdcAdapter.ASSET_TO_USD_AGGREGATOR(),
+      ChainlinkEthereum.USDC_USD,
+      'USDC adapter underlying must equal the non-SVR Chainlink USDC/USD feed'
     );
     assertEq(usdcAdapter.getPriceCap(), EXPECTED_PRICE_CAP, 'USDC adapter price cap mismatch');
   }
