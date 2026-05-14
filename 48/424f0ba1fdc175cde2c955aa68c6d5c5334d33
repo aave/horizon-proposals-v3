@@ -1,0 +1,14 @@
+src/AaveV3Horizon_USTBSupplyCap_20260514/AaveV3Horizon_USTBSupplyCap_20260514.t.sol
+  h_71908bb6884da4 1-72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "48424f0ba1fdc175cde2c955aa68c6d5c5334d33",
+  "prompts": {},
+  "humans": {
+    "h_71908bb6884da4": {
+      "author": "YBM <31329384+yan-man@users.noreply.github.com>"
+    }
+  }
+}
