@@ -1,0 +1,25 @@
+src/AaveV3Horizon_CentrifugeSupplyCaps_20260515/AaveV3Horizon_CentrifugeSupplyCaps_20260515.t.sol
+  h_71908bb6884da4 1-98,100-101
+  s_c4f53c5425593a::t_50148bc92fbd7e 99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "935dde8b15bb5ddd8d945ca9b94f827d92af4d0d",
+  "prompts": {},
+  "humans": {
+    "h_71908bb6884da4": {
+      "author": "YBM <31329384+yan-man@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_c4f53c5425593a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0c4e899b-d49f-41da-90f4-6976ce50f3c8",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "YBM <31329384+yan-man@users.noreply.github.com>"
+    }
+  }
+}
