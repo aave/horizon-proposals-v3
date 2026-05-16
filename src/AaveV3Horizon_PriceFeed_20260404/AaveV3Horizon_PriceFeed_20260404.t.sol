@@ -4,8 +4,10 @@ pragma solidity ^0.8.0;
 import {AggregatorInterface} from 'aave-helpers/lib/aave-address-book/lib/aave-v3-origin/src/contracts/dependencies/chainlink/AggregatorInterface.sol';
 import {IAaveOracle} from 'aave-v3-origin/contracts/interfaces/IAaveOracle.sol';
 import {IPool} from 'aave-v3-origin/contracts/interfaces/IPool.sol';
+import {IPoolAddressesProvider} from 'aave-v3-origin/contracts/interfaces/IPoolAddressesProvider.sol';
 import {ProtocolV3HorizonTestBase, ReserveConfig} from 'tests/utils/ProtocolV3HorizonTestBase.sol';
 import {AaveV3EthereumHorizon, AaveV3EthereumHorizonAssets} from 'aave-address-book-latest/AaveV3EthereumHorizon.sol';
+import {AaveV3EthereumHorizonCustom} from 'src/utils/AaveV3EthereumHorizonCustom.sol';
 import {AaveV3Ethereum, AaveV3EthereumAssets} from 'aave-address-book-latest/AaveV3Ethereum.sol';
 import {ChainlinkEthereum} from 'aave-address-book/ChainlinkEthereum.sol';
 import {IPriceCapAdapterStable} from 'src/interfaces/IPriceCapAdapterStable.sol';
@@ -29,6 +31,8 @@ contract AaveV3Horizon_PriceFeed_20260404_Test is ProtocolV3HorizonTestBase {
 
   /// 10200 bps expressed in the 8-decimal feed precision used by the adapter.
   int256 internal constant EXPECTED_PRICE_CAP = int256(10200) * 1e4;
+  /// 1 BPS = 0.01% expressed in 1e18 precision for approxEqRel assertion
+  uint256 internal constant ONE_BPS = 1e14;
 
   function setUp() public {
     vm.createSelectFork(vm.rpcUrl('mainnet'), 24852499);
@@ -48,8 +52,14 @@ contract AaveV3Horizon_PriceFeed_20260404_Test is ProtocolV3HorizonTestBase {
     defaultTest_v3_3('AaveV3Horizon_PriceFeed_20260404', _pool(), _executePayload);
   }
 
-  /// 1 BPS = 0.01% expressed in 1e18 precision
-  uint256 internal constant ONE_BPS = 1e14;
+  function test_addressBook_oracle_matches() public view {
+    // address book ORACLE constant matches the live pool oracle
+    assertEq(
+      IPoolAddressesProvider(_pool().ADDRESSES_PROVIDER()).getPriceOracle(),
+      address(AaveV3EthereumHorizon.ORACLE),
+      'address book ORACLE != live pool oracle'
+    );
+  }
 
   /**
    * @dev Verify the RLUSD oracle is updated to the cap adapter.
@@ -58,7 +68,12 @@ contract AaveV3Horizon_PriceFeed_20260404_Test is ProtocolV3HorizonTestBase {
     IAaveOracle oracle = IAaveOracle(AaveV3EthereumHorizon.ORACLE);
     address RLUSD = AaveV3EthereumHorizonAssets.RLUSD_UNDERLYING;
 
-    // BEFORE
+    // BEFORE: live source matches address book RLUSD_ORACLE
+    assertEq(
+      oracle.getSourceOfAsset(RLUSD),
+      AaveV3EthereumHorizonAssets.RLUSD_ORACLE,
+      'live RLUSD source != address book RLUSD_ORACLE'
+    );
     assertEq(oracle.getSourceOfAsset(RLUSD), OLD_RLUSD_ORACLE, 'RLUSD oracle before');
     assertNotEq(
       oracle.getSourceOfAsset(RLUSD),
@@ -87,10 +102,16 @@ contract AaveV3Horizon_PriceFeed_20260404_Test is ProtocolV3HorizonTestBase {
     IAaveOracle oracle = IAaveOracle(AaveV3EthereumHorizon.ORACLE);
     address USDC = AaveV3EthereumHorizonAssets.USDC_UNDERLYING;
 
-    // BEFORE
+    // BEFORE: live source matches address book USDC_ORACLE
+    assertEq(
+      oracle.getSourceOfAsset(USDC),
+      AaveV3EthereumHorizonAssets.USDC_ORACLE,
+      'live USDC source != address book USDC_ORACLE'
+    );
     assertEq(oracle.getSourceOfAsset(USDC), OLD_USDC_ORACLE, 'USDC oracle before');
-    assertTrue(
-      oracle.getSourceOfAsset(USDC) != newUsdcOracle,
+    assertNotEq(
+      oracle.getSourceOfAsset(USDC),
+      AaveV3EthereumAssets.USDC_ORACLE,
       'USDC oracle should differ from V3 core before'
     );
     uint256 priceBefore = oracle.getAssetPrice(USDC);
@@ -104,12 +125,20 @@ contract AaveV3Horizon_PriceFeed_20260404_Test is ProtocolV3HorizonTestBase {
   }
 
   /// @dev Verify GHO oracle already matches V3 core (only other stablecoin within both pools).
-  function test_GHO_OracleAlreadyMatchesV3Core() public view {
+  function test_GHO_OracleAlreadyMatchesV3Core() public {
     IAaveOracle oracle = IAaveOracle(AaveV3EthereumHorizon.ORACLE);
     assertEq(
       oracle.getSourceOfAsset(AaveV3EthereumHorizonAssets.GHO_UNDERLYING),
       AaveV3EthereumAssets.GHO_ORACLE,
       'GHO oracle should already match V3 core'
+    );
+
+    _executePayload();
+
+    assertEq(
+      oracle.getSourceOfAsset(AaveV3EthereumHorizonAssets.GHO_UNDERLYING),
+      AaveV3EthereumAssets.GHO_ORACLE,
+      'GHO oracle should still match V3 core after execution'
     );
   }
 
