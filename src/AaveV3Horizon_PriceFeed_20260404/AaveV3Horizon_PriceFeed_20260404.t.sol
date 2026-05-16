@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import {AggregatorInterface} from 'aave-helpers/lib/aave-address-book/lib/aave-v3-origin/src/contracts/dependencies/chainlink/AggregatorInterface.sol';
 import {IAaveOracle} from 'aave-v3-origin/contracts/interfaces/IAaveOracle.sol';
+import {IPool} from 'aave-v3-origin/contracts/interfaces/IPool.sol';
 import {ProtocolV3HorizonTestBase, ReserveConfig} from 'tests/utils/ProtocolV3HorizonTestBase.sol';
 import {AaveV3EthereumHorizon, AaveV3EthereumHorizonAssets} from 'aave-address-book-latest/AaveV3EthereumHorizon.sol';
 import {AaveV3Ethereum, AaveV3EthereumAssets} from 'aave-address-book-latest/AaveV3Ethereum.sol';
@@ -149,6 +151,122 @@ contract AaveV3Horizon_PriceFeed_20260404_Test is ProtocolV3HorizonTestBase {
       'USDC adapter underlying must equal the non-SVR Chainlink USDC/USD feed'
     );
     assertEq(usdcAdapter.getPriceCap(), EXPECTED_PRICE_CAP, 'USDC adapter price cap mismatch');
+  }
+
+  /// @dev New adapters must report 8 decimals to match the oracle convention
+  function test_newAdapters_decimals() public view {
+    assertEq(AggregatorInterface(newRlusdOracle).decimals(), 8, 'RLUSD adapter decimals');
+    assertEq(AggregatorInterface(newUsdcOracle).decimals(), 8, 'USDC adapter decimals');
+  }
+
+  /// @dev underlying Chainlink aggregators feeding each adapter report a fresh
+  /// updatedAt (within USDC/USD and RLUSD/USD heartbeats)
+  function test_oracleFreshness_preExec() public view {
+    uint256 maxStaleness = 26 hours;
+
+    address rlusdUnderlyingFeed = rlusdAdapter.ASSET_TO_USD_AGGREGATOR();
+    (, int256 rlusdAnswer, , uint256 rlusdUpdatedAt, ) = AggregatorInterface(rlusdUnderlyingFeed)
+      .latestRoundData();
+    assertGt(rlusdAnswer, 0, 'RLUSD underlying answer should be > 0');
+    assertGt(rlusdUpdatedAt, 0, 'RLUSD underlying updatedAt should be > 0');
+    assertLt(
+      block.timestamp - rlusdUpdatedAt,
+      maxStaleness,
+      'RLUSD underlying updatedAt older than heartbeat'
+    );
+
+    address usdcUnderlyingFeed = usdcAdapter.ASSET_TO_USD_AGGREGATOR();
+    (, int256 usdcAnswer, , uint256 usdcUpdatedAt, ) = AggregatorInterface(usdcUnderlyingFeed)
+      .latestRoundData();
+    assertGt(usdcAnswer, 0, 'USDC underlying answer should be > 0');
+    assertGt(usdcUpdatedAt, 0, 'USDC underlying updatedAt should be > 0');
+    assertLt(
+      block.timestamp - usdcUpdatedAt,
+      maxStaleness,
+      'USDC underlying updatedAt older than heartbeat'
+    );
+  }
+
+  /// @dev new adapters are already deployed and live (latestAnswer > 0)
+  /// and aligned with the currently configured oracles to within 1 BPS
+  function test_priceFeeds_alignedPreExec() public view {
+    int256 oldRlusd = AggregatorInterface(OLD_RLUSD_ORACLE).latestAnswer();
+    int256 newRlusd = AggregatorInterface(newRlusdOracle).latestAnswer();
+    assertGt(newRlusd, 0, 'new RLUSD adapter latestAnswer should be > 0');
+    assertGt(oldRlusd, 0, 'old RLUSD oracle latestAnswer should be > 0');
+    assertApproxEqRel(
+      uint256(newRlusd),
+      uint256(oldRlusd),
+      ONE_BPS,
+      'RLUSD: new adapter vs old oracle pre-exec diff > 1 BPS'
+    );
+
+    int256 oldUsdc = AggregatorInterface(OLD_USDC_ORACLE).latestAnswer();
+    int256 newUsdc = AggregatorInterface(newUsdcOracle).latestAnswer();
+    assertGt(newUsdc, 0, 'new USDC adapter latestAnswer should be > 0');
+    assertGt(oldUsdc, 0, 'old USDC oracle latestAnswer should be > 0');
+    assertApproxEqRel(
+      uint256(newUsdc),
+      uint256(oldUsdc),
+      ONE_BPS,
+      'USDC: new adapter vs old oracle pre-exec diff > 1 BPS'
+    );
+  }
+
+  /// @dev after exec, exactly the two target reserves had
+  /// their oracle source changed, all other reserves keep their prior source
+  function test_noOldFeedRemainsAfterExec() public {
+    IPool pool = _pool();
+    IAaveOracle oracle = IAaveOracle(AaveV3EthereumHorizon.ORACLE);
+    address[] memory reserves = pool.getReservesList();
+
+    address[] memory sourcesBefore = new address[](reserves.length);
+    for (uint256 i; i < reserves.length; ++i) {
+      sourcesBefore[i] = oracle.getSourceOfAsset(reserves[i]);
+    }
+
+    _executePayload();
+
+    address[] memory sourcesAfter = new address[](reserves.length);
+    address[] memory replacedFeeds = new address[](reserves.length);
+    uint256 replacedCount;
+    for (uint256 i; i < reserves.length; ++i) {
+      sourcesAfter[i] = oracle.getSourceOfAsset(reserves[i]);
+      if (sourcesBefore[i] != sourcesAfter[i]) {
+        replacedFeeds[replacedCount++] = sourcesBefore[i];
+      }
+    }
+
+    assertEq(replacedCount, 2, 'expected exactly 2 reserves with oracle source change');
+
+    for (uint256 i; i < reserves.length; ++i) {
+      if (
+        reserves[i] == AaveV3EthereumHorizonAssets.RLUSD_UNDERLYING ||
+        reserves[i] == AaveV3EthereumHorizonAssets.USDC_UNDERLYING
+      ) {
+        continue;
+      }
+      assertEq(
+        sourcesAfter[i],
+        sourcesBefore[i],
+        string.concat('non-target reserve oracle changed: ', vm.toString(reserves[i]))
+      );
+    }
+
+    for (uint256 i; i < reserves.length; ++i) {
+      for (uint256 k; k < replacedCount; ++k) {
+        assertNotEq(
+          sourcesAfter[i],
+          replacedFeeds[k],
+          string.concat(
+            'reserve ',
+            vm.toString(reserves[i]),
+            ' still uses replaced feed ',
+            vm.toString(replacedFeeds[k])
+          )
+        );
+      }
+    }
   }
 
   function _executePayload() internal {
