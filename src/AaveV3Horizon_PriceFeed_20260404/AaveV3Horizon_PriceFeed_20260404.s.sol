@@ -3,8 +3,7 @@ pragma solidity ^0.8.0;
 
 import {console2 as console} from 'forge-std/console2.sol';
 import {EthereumScript} from 'solidity-utils/contracts/utils/ScriptUtils.sol';
-import {AaveHorizonGovV3Helpers} from 'src/utils/AaveHorizonGovV3Helpers.sol';
-import {AaveV3EthereumHorizonCustom} from 'src/utils/AaveV3EthereumHorizonCustom.sol';
+import {GovV3Helpers} from 'aave-helpers/src/GovV3Helpers.sol';
 import {AaveV3Horizon_PriceFeed_20260404} from 'src/AaveV3Horizon_PriceFeed_20260404/AaveV3Horizon_PriceFeed_20260404.sol';
 
 /**
@@ -13,18 +12,10 @@ import {AaveV3Horizon_PriceFeed_20260404} from 'src/AaveV3Horizon_PriceFeed_2026
  */
 contract DeployEthereum is EthereumScript {
   function run() external {
-    vm.startBroadcast();
-    address payload = address(new AaveV3Horizon_PriceFeed_20260404());
-    vm.stopBroadcast();
-
-    (address to, bytes memory data, uint8 operation) = AaveHorizonGovV3Helpers
-      .createExecutorCalldata(payload);
-
-    console.log('=== Safe Transaction ===');
-    console.log('safe:', AaveV3EthereumHorizonCustom.HORIZON_EMERGENCY);
-    console.log('to:', to);
-    console.log('operation:', operation);
-    console.log('calldata:');
-    console.logBytes(data);
+    // deploy payloads
+    address payload = GovV3Helpers.deployDeterministic(
+      type(AaveV3Horizon_PriceFeed_20260404).creationCode
+    );
+    console.log('payload:', payload);
   }
 }

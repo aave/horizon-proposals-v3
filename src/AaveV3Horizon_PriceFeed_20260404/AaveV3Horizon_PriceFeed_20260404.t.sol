@@ -343,6 +343,79 @@ contract AaveV3Horizon_PriceFeed_20260404_Test is ProtocolV3HorizonTestBase {
     vm.clearMockedCalls();
   }
 
+  /// @dev when the underlying feed reports a price below the cap, the pool oracle must pass it through uncapped
+  function test_priceFlowsThrough_belowCap_viaPool() public {
+    _executePayload();
+
+    IAaveOracle oracle = IAaveOracle(AaveV3EthereumHorizon.ORACLE);
+
+    _assertPriceFlowsThrough(
+      oracle,
+      AaveV3EthereumHorizonAssets.RLUSD_UNDERLYING,
+      rlusdAdapter,
+      'RLUSD'
+    );
+    _assertPriceFlowsThrough(
+      oracle,
+      AaveV3EthereumHorizonAssets.USDC_UNDERLYING,
+      usdcAdapter,
+      'USDC'
+    );
+  }
+
+  /// @dev For every reserve, the ReserveConfigurationMap should be unchanged
+  function test_reserveConfig_unchanged_nonTarget() public {
+    IPool pool = _pool();
+    address[] memory reserves = pool.getReservesList();
+    uint256[] memory beforeData = new uint256[](reserves.length);
+
+    for (uint256 i; i < reserves.length; ++i) {
+      beforeData[i] = pool.getConfiguration(reserves[i]).data;
+    }
+
+    _executePayload();
+
+    for (uint256 i; i < reserves.length; ++i) {
+      assertEq(
+        pool.getConfiguration(reserves[i]).data,
+        beforeData[i],
+        string.concat('non-target reserve config changed: ', vm.toString(reserves[i]))
+      );
+    }
+  }
+
+  function _assertPriceFlowsThrough(
+    IAaveOracle oracle,
+    address underlying,
+    IPriceCapAdapterStable adapter,
+    string memory label
+  ) internal {
+    int256 priceCap = adapter.getPriceCap();
+    int256 belowCap = priceCap - int256(1e6); // $0.01 below cap in 8-decimal precision
+    require(belowCap > 0, 'belowCap should be positive');
+
+    address underlyingFeed = adapter.ASSET_TO_USD_AGGREGATOR();
+    vm.mockCall(
+      underlyingFeed,
+      abi.encodeWithSelector(AggregatorInterface.latestAnswer.selector),
+      abi.encode(belowCap)
+    );
+    vm.mockCall(
+      underlyingFeed,
+      abi.encodeWithSelector(AggregatorInterface.latestRoundData.selector),
+      abi.encode(uint80(1), belowCap, block.timestamp, block.timestamp, uint80(1))
+    );
+
+    uint256 priceFromPool = oracle.getAssetPrice(underlying);
+    assertEq(
+      priceFromPool,
+      uint256(belowCap),
+      string.concat(label, ': pool oracle should pass through underlying when below cap')
+    );
+
+    vm.clearMockedCalls();
+  }
+
   function _executePayload() internal {
     _executeHorizonPayload(address(proposal));
   }
