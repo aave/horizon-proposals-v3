@@ -287,12 +287,21 @@ contract AaveV3Horizon_PriceFeed_20260404_Test is ProtocolV3HorizonTestBase {
     }
   }
 
-  /// @dev Underlying aggregators from each adapter with proper description
-  function test_underlyingFeed_description() public view {
+  function test_feedDescriptions() public view {
+    assertEq(
+      AggregatorInterface(newRlusdOracle).description(),
+      'Capped RLUSD / USD',
+      'RLUSD adapter description mismatch'
+    );
     assertEq(
       AggregatorInterface(rlusdAdapter.ASSET_TO_USD_AGGREGATOR()).description(),
       'RLUSD / USD',
       'RLUSD underlying description mismatch'
+    );
+    assertEq(
+      AggregatorInterface(newUsdcOracle).description(),
+      'Capped USDC / USD',
+      'USDC adapter description mismatch'
     );
     assertEq(
       AggregatorInterface(usdcAdapter.ASSET_TO_USD_AGGREGATOR()).description(),
