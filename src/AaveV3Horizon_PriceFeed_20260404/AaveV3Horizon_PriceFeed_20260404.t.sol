@@ -269,6 +269,80 @@ contract AaveV3Horizon_PriceFeed_20260404_Test is ProtocolV3HorizonTestBase {
     }
   }
 
+  /// @dev Reserves list is unchanged
+  function test_reservesList_unchanged() public {
+    IPool pool = _pool();
+    address[] memory before = pool.getReservesList();
+
+    _executePayload();
+
+    address[] memory afterList = pool.getReservesList();
+    assertEq(afterList.length, before.length, 'reservesList length changed');
+    for (uint256 i; i < before.length; ++i) {
+      assertEq(
+        afterList[i],
+        before[i],
+        string.concat('reservesList[', vm.toString(i), '] changed')
+      );
+    }
+  }
+
+  /// @dev Underlying aggregators from each adapter with proper description
+  function test_underlyingFeed_description() public view {
+    assertEq(
+      AggregatorInterface(rlusdAdapter.ASSET_TO_USD_AGGREGATOR()).description(),
+      'RLUSD / USD',
+      'RLUSD underlying description mismatch'
+    );
+    assertEq(
+      AggregatorInterface(usdcAdapter.ASSET_TO_USD_AGGREGATOR()).description(),
+      'USDC / USD',
+      'USDC underlying description mismatch'
+    );
+  }
+
+  /// @dev When the Chainlink feed reports a price above the adapter's cap, the
+  /// pool oracle's `getAssetPrice` must bound to the cap
+  function test_priceCapBounded_viaPool() public {
+    _executePayload();
+
+    IAaveOracle oracle = IAaveOracle(AaveV3EthereumHorizon.ORACLE);
+
+    _assertCapBounded(oracle, AaveV3EthereumHorizonAssets.RLUSD_UNDERLYING, rlusdAdapter, 'RLUSD');
+    _assertCapBounded(oracle, AaveV3EthereumHorizonAssets.USDC_UNDERLYING, usdcAdapter, 'USDC');
+  }
+
+  function _assertCapBounded(
+    IAaveOracle oracle,
+    address underlying,
+    IPriceCapAdapterStable adapter,
+    string memory label
+  ) internal {
+    int256 priceCap = adapter.getPriceCap();
+    int256 spike = priceCap + int256(1e7); // $0.10 above cap
+
+    address underlyingFeed = adapter.ASSET_TO_USD_AGGREGATOR();
+    vm.mockCall(
+      underlyingFeed,
+      abi.encodeWithSelector(AggregatorInterface.latestAnswer.selector),
+      abi.encode(spike)
+    );
+    vm.mockCall(
+      underlyingFeed,
+      abi.encodeWithSelector(AggregatorInterface.latestRoundData.selector),
+      abi.encode(uint80(1), spike, block.timestamp, block.timestamp, uint80(1))
+    );
+
+    uint256 priceFromPool = oracle.getAssetPrice(underlying);
+    assertEq(
+      priceFromPool,
+      uint256(priceCap),
+      string.concat(label, ': pool oracle price not clamped to cap on upstream spike')
+    );
+
+    vm.clearMockedCalls();
+  }
+
   function _executePayload() internal {
     _executeHorizonPayload(address(proposal));
   }
