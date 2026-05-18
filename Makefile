@@ -14,7 +14,7 @@ test-contract :; forge test --match-contract ${filter} -vv
 # Deploys payload. `make deploy-payload`
 deploy-payload :; 
 	FOUNDRY_PROFILE=${CHAIN} forge script src/${PAYLOAD}/${PAYLOAD}.s.sol:DeployEthereum \
-		--rpc-url ${CHAIN} --account ${ACCOUNT} --slow --gas-estimate-multiplier 150 \
+		--rpc-url ${CHAIN} --account ${ACCOUNT} --slow --gas-estimate-multiplier 150 -vvvv \
 		--chain ${CHAIN} --verifier-url ${VERIFIER_URL} \
 		--sig "run()" \
 		$(if ${DRY},, --broadcast --verify) \
