@@ -11,8 +11,7 @@ import {AaveV3Horizon_PriceFeed_20260404} from 'src/AaveV3Horizon_PriceFeed_2026
  * command: make deploy-payload
  */
 contract DeployEthereum is EthereumScript {
-  function run() external {
-    // deploy payloads
+  function run() external broadcast {
     address payload = GovV3Helpers.deployDeterministic(
       type(AaveV3Horizon_PriceFeed_20260404).creationCode
     );
