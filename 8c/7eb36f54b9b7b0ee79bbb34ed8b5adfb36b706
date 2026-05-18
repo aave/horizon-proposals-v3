@@ -1,0 +1,14 @@
+Makefile
+  h_71908bb6884da4 17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "8c7eb36f54b9b7b0ee79bbb34ed8b5adfb36b706",
+  "prompts": {},
+  "humans": {
+    "h_71908bb6884da4": {
+      "author": "YBM <31329384+yan-man@users.noreply.github.com>"
+    }
+  }
+}
