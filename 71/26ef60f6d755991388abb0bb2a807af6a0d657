@@ -1,0 +1,28 @@
+src/AaveV3Horizon_PriceFeed_20260404/AaveV3Horizon_PriceFeed_20260404.t.sol
+  s_83fca6031f1011::t_790b2c223cc745 37
+  s_83fca6031f1011::t_cc5ce596a00809 51,55,170,190,210,343,482,495,585
+  s_83fca6031f1011::t_45e8f08e332ffc 64-65,80-85,90,93-94,109-110,112-114,119-146,151
+  s_83fca6031f1011::t_35bbb7f0d6bbd5 217,245,271,326,368,409,429,510,534,563
+  h_71908bb6884da4 111,152
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "7126ef60f6d755991388abb0bb2a807af6a0d657",
+  "prompts": {},
+  "humans": {
+    "h_71908bb6884da4": {
+      "author": "YBM <31329384+yan-man@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_83fca6031f1011": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "40428503-fd05-4e00-8da0-d4eb326f5229",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "YBM <31329384+yan-man@users.noreply.github.com>"
+    }
+  }
+}
