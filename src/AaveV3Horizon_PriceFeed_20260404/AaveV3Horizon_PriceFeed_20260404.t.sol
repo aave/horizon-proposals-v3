@@ -62,7 +62,7 @@ contract AaveV3Horizon_PriceFeed_20260404_Test is ProtocolV3HorizonTestBase {
   }
 
   /// @dev BEFORE: RLUSD source matches address book, differs from V3 core
-  function test_RLUSD_oracleSource_before() public view virtual {
+  function test_RLUSD_oracleSource_before() public virtual {
     IAaveOracle oracle = IAaveOracle(AaveV3EthereumHorizon.ORACLE);
     address RLUSD = AaveV3EthereumHorizonAssets.RLUSD_UNDERLYING;
 
@@ -91,7 +91,7 @@ contract AaveV3Horizon_PriceFeed_20260404_Test is ProtocolV3HorizonTestBase {
   }
 
   /// @dev BEFORE: USDC source matches address book entry, differs from V3 core
-  function test_USDC_oracleSource_before() public view virtual {
+  function test_USDC_oracleSource_before() public virtual {
     IAaveOracle oracle = IAaveOracle(AaveV3EthereumHorizon.ORACLE);
     address USDC = AaveV3EthereumHorizonAssets.USDC_UNDERLYING;
 
@@ -214,7 +214,7 @@ contract AaveV3Horizon_PriceFeed_20260404_Test is ProtocolV3HorizonTestBase {
 
   /// @dev underlying Chainlink aggregators feeding each adapter report a fresh
   /// updatedAt (within USDC/USD and RLUSD/USD heartbeats)
-  function test_oracleFreshness_before() public view virtual {
+  function test_oracleFreshness_before() public virtual {
     uint256 maxStaleness = 26 hours;
 
     address rlusdUnderlyingFeed = rlusdAdapter.ASSET_TO_USD_AGGREGATOR();
@@ -242,7 +242,7 @@ contract AaveV3Horizon_PriceFeed_20260404_Test is ProtocolV3HorizonTestBase {
 
   /// @dev new adapters are already deployed and live (latestAnswer > 0)
   /// and aligned with the currently configured oracles to within 1 BPS
-  function test_priceFeeds_aligned_before() public view virtual {
+  function test_priceFeeds_aligned_before() public virtual {
     int256 oldRlusd = AggregatorInterface(OLD_RLUSD_ORACLE).latestAnswer();
     int256 newRlusd = AggregatorInterface(newRlusdOracle).latestAnswer();
     assertGt(newRlusd, 0, 'new RLUSD adapter latestAnswer should be > 0');
@@ -531,7 +531,7 @@ contract AaveV3Horizon_PriceFeed_20260404_Test is ProtocolV3HorizonTestBase {
 
   /// @dev Defensive: before the payload runs, neither new adapter is already wired
   /// to any reserve. Catches a deploy-time collision
-  function test_newAdapters_notAlreadySet_before() public view virtual {
+  function test_newAdapters_notAlreadySet_before() public virtual {
     IAaveOracle oracle = IAaveOracle(AaveV3EthereumHorizon.ORACLE);
     address[] memory reserves = _pool().getReservesList();
 
