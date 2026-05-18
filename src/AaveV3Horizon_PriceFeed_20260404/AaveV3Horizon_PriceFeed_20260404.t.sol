@@ -34,7 +34,7 @@ contract AaveV3Horizon_PriceFeed_20260404_Test is ProtocolV3HorizonTestBase {
   /// 1 BPS = 0.01% expressed in 1e18 precision for approxEqRel assertion
   uint256 internal constant ONE_BPS = 1e14;
 
-  function setUp() public {
+  function setUp() public virtual {
     vm.createSelectFork(vm.rpcUrl('mainnet'), 24852499);
     proposal = new AaveV3Horizon_PriceFeed_20260404();
 
@@ -48,11 +48,11 @@ contract AaveV3Horizon_PriceFeed_20260404_Test is ProtocolV3HorizonTestBase {
   /**
    * @dev Full test suite: snapshots, state diff, validations, e2e.
    */
-  function test_defaultProposalExecution() public {
+  function test_defaultProposalExecution() public virtual {
     defaultTest_v3_3('AaveV3Horizon_PriceFeed_20260404', _pool(), _executePayload);
   }
 
-  function test_addressBook_oracle_matches() public view {
+  function test_addressBook_oracle_matches() public view virtual {
     // address book ORACLE constant matches the live pool oracle
     assertEq(
       IPoolAddressesProvider(_pool().ADDRESSES_PROVIDER()).getPriceOracle(),
@@ -61,14 +61,11 @@ contract AaveV3Horizon_PriceFeed_20260404_Test is ProtocolV3HorizonTestBase {
     );
   }
 
-  /**
-   * @dev Verify the RLUSD oracle is updated to the cap adapter.
-   */
-  function test_RLUSD_PriceFeedUpdate() public {
+  /// @dev BEFORE: RLUSD source matches address book, differs from V3 core
+  function test_RLUSD_oracleSource_before() public view virtual {
     IAaveOracle oracle = IAaveOracle(AaveV3EthereumHorizon.ORACLE);
     address RLUSD = AaveV3EthereumHorizonAssets.RLUSD_UNDERLYING;
 
-    // BEFORE: live source matches address book RLUSD_ORACLE
     assertEq(
       oracle.getSourceOfAsset(RLUSD),
       AaveV3EthereumHorizonAssets.RLUSD_ORACLE,
@@ -80,29 +77,24 @@ contract AaveV3Horizon_PriceFeed_20260404_Test is ProtocolV3HorizonTestBase {
       AaveV3EthereumAssets.RLUSD_ORACLE,
       'RLUSD oracle should differ from V3 core before'
     );
-    uint256 priceBefore = oracle.getAssetPrice(RLUSD);
+  }
+
+  /// @dev AFTER: payload wires RLUSD to the new cap adapter and the pool reports a positive price
+  function test_RLUSD_oracleSource_after() public virtual {
+    IAaveOracle oracle = IAaveOracle(AaveV3EthereumHorizon.ORACLE);
+    address RLUSD = AaveV3EthereumHorizonAssets.RLUSD_UNDERLYING;
 
     _executePayload();
 
-    // AFTER
     assertEq(oracle.getSourceOfAsset(RLUSD), newRlusdOracle, 'RLUSD oracle after');
-    uint256 priceAfter = oracle.getAssetPrice(RLUSD);
-    assertApproxEqRel(
-      priceAfter,
-      priceBefore,
-      ONE_BPS,
-      'RLUSD price must be within 1 BPS of prior'
-    );
+    assertGt(oracle.getAssetPrice(RLUSD), 0, 'RLUSD price must be > 0 after');
   }
 
-  /**
-   * @dev Verify the USDC oracle is updated to the cap adapter.
-   */
-  function test_USDC_PriceFeedUpdate() public {
+  /// @dev BEFORE: USDC source matches address book entry, differs from V3 core
+  function test_USDC_oracleSource_before() public view virtual {
     IAaveOracle oracle = IAaveOracle(AaveV3EthereumHorizon.ORACLE);
     address USDC = AaveV3EthereumHorizonAssets.USDC_UNDERLYING;
 
-    // BEFORE: live source matches address book USDC_ORACLE
     assertEq(
       oracle.getSourceOfAsset(USDC),
       AaveV3EthereumHorizonAssets.USDC_ORACLE,
@@ -114,18 +106,50 @@ contract AaveV3Horizon_PriceFeed_20260404_Test is ProtocolV3HorizonTestBase {
       AaveV3EthereumAssets.USDC_ORACLE,
       'USDC oracle should differ from V3 core before'
     );
+  }
+
+  /// @dev AFTER: USDC source is updated to the new cap adapter and the pool reports a positive price
+  function test_USDC_oracleSource_after() public virtual {
+    IAaveOracle oracle = IAaveOracle(AaveV3EthereumHorizon.ORACLE);
+    address USDC = AaveV3EthereumHorizonAssets.USDC_UNDERLYING;
+
+    _executePayload();
+
+    assertEq(oracle.getSourceOfAsset(USDC), newUsdcOracle, 'USDC oracle after');
+    assertGt(oracle.getAssetPrice(USDC), 0, 'USDC price must be > 0 after');
+  }
+
+  /// @dev DELTA: end-to-end price stays within 1 BPS
+  function test_RLUSD_price_delta() public virtual {
+    IAaveOracle oracle = IAaveOracle(AaveV3EthereumHorizon.ORACLE);
+    address RLUSD = AaveV3EthereumHorizonAssets.RLUSD_UNDERLYING;
+    uint256 priceBefore = oracle.getAssetPrice(RLUSD);
+
+    _executePayload();
+
+    uint256 priceAfter = oracle.getAssetPrice(RLUSD);
+    assertApproxEqRel(
+      priceAfter,
+      priceBefore,
+      ONE_BPS,
+      'RLUSD price must be within 1 BPS of prior'
+    );
+  }
+
+  /// @dev DELTA: end-to-end USDC price stays within 1 BPS
+  function test_USDC_price_delta() public virtual {
+    IAaveOracle oracle = IAaveOracle(AaveV3EthereumHorizon.ORACLE);
+    address USDC = AaveV3EthereumHorizonAssets.USDC_UNDERLYING;
     uint256 priceBefore = oracle.getAssetPrice(USDC);
 
     _executePayload();
 
-    // AFTER
-    assertEq(oracle.getSourceOfAsset(USDC), newUsdcOracle, 'USDC oracle after');
     uint256 priceAfter = oracle.getAssetPrice(USDC);
     assertApproxEqRel(priceAfter, priceBefore, ONE_BPS, 'USDC price must be within 1 BPS of prior');
   }
 
-  /// @dev Verify GHO oracle already matches V3 core (only other stablecoin within both pools).
-  function test_GHO_OracleAlreadyMatchesV3Core() public {
+  /// @dev GHO already matches V3 core pre-exec (no migration needed)
+  function test_GHO_oracleMatchesV3Core() public virtual {
     IAaveOracle oracle = IAaveOracle(AaveV3EthereumHorizon.ORACLE);
     assertEq(
       oracle.getSourceOfAsset(AaveV3EthereumHorizonAssets.GHO_UNDERLYING),
@@ -143,7 +167,7 @@ contract AaveV3Horizon_PriceFeed_20260404_Test is ProtocolV3HorizonTestBase {
   }
 
   /// @dev RLUSD stable cap adapter constructor params.
-  function test_RLUSD_AdapterParams() public view {
+  function test_RLUSD_AdapterParams() public view virtual {
     assertEq(
       rlusdAdapter.ACL_MANAGER(),
       address(AaveV3EthereumHorizon.ACL_MANAGER),
@@ -163,7 +187,7 @@ contract AaveV3Horizon_PriceFeed_20260404_Test is ProtocolV3HorizonTestBase {
   }
 
   /// @dev USDC stable cap adapter constructor params.
-  function test_USDC_AdapterParams() public view {
+  function test_USDC_AdapterParams() public view virtual {
     assertEq(
       usdcAdapter.ACL_MANAGER(),
       address(AaveV3EthereumHorizon.ACL_MANAGER),
@@ -183,14 +207,14 @@ contract AaveV3Horizon_PriceFeed_20260404_Test is ProtocolV3HorizonTestBase {
   }
 
   /// @dev New adapters must report 8 decimals to match the oracle convention
-  function test_newAdapters_decimals() public view {
+  function test_newAdapters_decimals() public view virtual {
     assertEq(AggregatorInterface(newRlusdOracle).decimals(), 8, 'RLUSD adapter decimals');
     assertEq(AggregatorInterface(newUsdcOracle).decimals(), 8, 'USDC adapter decimals');
   }
 
   /// @dev underlying Chainlink aggregators feeding each adapter report a fresh
   /// updatedAt (within USDC/USD and RLUSD/USD heartbeats)
-  function test_oracleFreshness_preExec() public view {
+  function test_oracleFreshness_before() public view virtual {
     uint256 maxStaleness = 26 hours;
 
     address rlusdUnderlyingFeed = rlusdAdapter.ASSET_TO_USD_AGGREGATOR();
@@ -218,7 +242,7 @@ contract AaveV3Horizon_PriceFeed_20260404_Test is ProtocolV3HorizonTestBase {
 
   /// @dev new adapters are already deployed and live (latestAnswer > 0)
   /// and aligned with the currently configured oracles to within 1 BPS
-  function test_priceFeeds_alignedPreExec() public view {
+  function test_priceFeeds_aligned_before() public view virtual {
     int256 oldRlusd = AggregatorInterface(OLD_RLUSD_ORACLE).latestAnswer();
     int256 newRlusd = AggregatorInterface(newRlusdOracle).latestAnswer();
     assertGt(newRlusd, 0, 'new RLUSD adapter latestAnswer should be > 0');
@@ -244,7 +268,7 @@ contract AaveV3Horizon_PriceFeed_20260404_Test is ProtocolV3HorizonTestBase {
 
   /// @dev after exec, exactly the two target reserves had
   /// their oracle source changed, all other reserves keep their prior source
-  function test_noOldFeedRemainsAfterExec() public {
+  function test_noOldFeedRemains_delta() public virtual {
     IPool pool = _pool();
     IAaveOracle oracle = IAaveOracle(AaveV3EthereumHorizon.ORACLE);
     address[] memory reserves = pool.getReservesList();
@@ -299,7 +323,7 @@ contract AaveV3Horizon_PriceFeed_20260404_Test is ProtocolV3HorizonTestBase {
   }
 
   /// @dev Reserves list is unchanged
-  function test_reservesList_unchanged() public {
+  function test_reservesList_unchanged_delta() public virtual {
     IPool pool = _pool();
     address[] memory before = pool.getReservesList();
 
@@ -316,7 +340,7 @@ contract AaveV3Horizon_PriceFeed_20260404_Test is ProtocolV3HorizonTestBase {
     }
   }
 
-  function test_feedDescriptions() public view {
+  function test_feedDescriptions() public view virtual {
     assertEq(
       AggregatorInterface(newRlusdOracle).description(),
       'Capped RLUSD / USD',
@@ -341,7 +365,7 @@ contract AaveV3Horizon_PriceFeed_20260404_Test is ProtocolV3HorizonTestBase {
 
   /// @dev When the Chainlink feed reports a price above the adapter's cap, the
   /// pool oracle's `getAssetPrice` must bound to the cap
-  function test_priceCapBounded_viaPool() public {
+  function test_priceCapBounded_viaPool_after() public virtual {
     _executePayload();
 
     IAaveOracle oracle = IAaveOracle(AaveV3EthereumHorizon.ORACLE);
@@ -382,7 +406,7 @@ contract AaveV3Horizon_PriceFeed_20260404_Test is ProtocolV3HorizonTestBase {
   }
 
   /// @dev when the underlying feed reports a price below the cap, the pool oracle must pass it through uncapped
-  function test_priceFlowsThrough_belowCap_viaPool() public {
+  function test_priceFlowsThrough_belowCap_viaPool_after() public virtual {
     _executePayload();
 
     IAaveOracle oracle = IAaveOracle(AaveV3EthereumHorizon.ORACLE);
@@ -402,7 +426,7 @@ contract AaveV3Horizon_PriceFeed_20260404_Test is ProtocolV3HorizonTestBase {
   }
 
   /// @dev For every reserve, the ReserveConfigurationMap should be unchanged
-  function test_reserveConfig_unchanged_nonTarget() public {
+  function test_reserveConfig_unchanged_nonTarget_delta() public virtual {
     IPool pool = _pool();
     address[] memory reserves = pool.getReservesList();
     uint256[] memory beforeData = new uint256[](reserves.length);
@@ -455,7 +479,7 @@ contract AaveV3Horizon_PriceFeed_20260404_Test is ProtocolV3HorizonTestBase {
   }
 
   /// @dev `setPriceCap` only callable by `CallerIsNotRiskOrPoolAdmin`
-  function test_setPriceCap_unauthorized_reverts() public {
+  function test_setPriceCap_unauthorized_reverts() public virtual {
     address randomUser = makeAddr('randomUser');
 
     vm.prank(randomUser);
@@ -468,7 +492,7 @@ contract AaveV3Horizon_PriceFeed_20260404_Test is ProtocolV3HorizonTestBase {
   }
 
   /// @dev Counter-test: a legitimate RiskAdmin (HORIZON_OPS) CAN update the cap
-  function test_setPriceCap_authorized_succeeds() public {
+  function test_setPriceCap_authorized_succeeds() public virtual {
     int256 newCap = int256(1.03e8);
     address riskAdmin = AaveV3EthereumHorizonCustom.HORIZON_OPS;
 
@@ -483,7 +507,7 @@ contract AaveV3Horizon_PriceFeed_20260404_Test is ProtocolV3HorizonTestBase {
 
   /// @dev Fuzz: for any positive underlying answer, the pool oracle returns
   /// `min(underlying, cap)`
-  function test_priceCap_fuzz_minOfUnderlyingAndCap(int256 underlyingAnswer) public {
+  function test_priceCap_fuzz_minOfUnderlyingAndCap_after(int256 underlyingAnswer) public virtual {
     underlyingAnswer = int256(bound(underlyingAnswer, 1, int256(type(int128).max)));
 
     _executePayload();
@@ -507,7 +531,7 @@ contract AaveV3Horizon_PriceFeed_20260404_Test is ProtocolV3HorizonTestBase {
 
   /// @dev Defensive: before the payload runs, neither new adapter is already wired
   /// to any reserve. Catches a deploy-time collision
-  function test_newAdapters_notAlreadySet_preExec() public view {
+  function test_newAdapters_notAlreadySet_before() public view virtual {
     IAaveOracle oracle = IAaveOracle(AaveV3EthereumHorizon.ORACLE);
     address[] memory reserves = _pool().getReservesList();
 
@@ -536,7 +560,7 @@ contract AaveV3Horizon_PriceFeed_20260404_Test is ProtocolV3HorizonTestBase {
 
   /// @dev Post-exec: `oracle.getAssetPrice` equals `adapter.latestAnswer()` exactly.
   /// Catches scaling / decoding bugs at the IAaveOracle layer
-  function test_adapterAnswer_matches_poolPrice_postExec() public {
+  function test_adapterAnswer_matches_poolPrice_after() public virtual {
     _executePayload();
 
     IAaveOracle oracle = IAaveOracle(AaveV3EthereumHorizon.ORACLE);
@@ -558,7 +582,7 @@ contract AaveV3Horizon_PriceFeed_20260404_Test is ProtocolV3HorizonTestBase {
     );
   }
 
-  function _executePayload() internal {
+  function _executePayload() internal virtual {
     _executeHorizonPayload(address(proposal));
   }
 
