@@ -454,6 +454,110 @@ contract AaveV3Horizon_PriceFeed_20260404_Test is ProtocolV3HorizonTestBase {
     vm.clearMockedCalls();
   }
 
+  /// @dev `setPriceCap` only callable by `CallerIsNotRiskOrPoolAdmin`
+  function test_setPriceCap_unauthorized_reverts() public {
+    address randomUser = makeAddr('randomUser');
+
+    vm.prank(randomUser);
+    vm.expectRevert();
+    rlusdAdapter.setPriceCap(int256(1));
+
+    vm.prank(randomUser);
+    vm.expectRevert();
+    usdcAdapter.setPriceCap(int256(1));
+  }
+
+  /// @dev Counter-test: a legitimate RiskAdmin (HORIZON_OPS) CAN update the cap
+  function test_setPriceCap_authorized_succeeds() public {
+    int256 newCap = int256(1.03e8);
+    address riskAdmin = AaveV3EthereumHorizonCustom.HORIZON_OPS;
+
+    vm.prank(riskAdmin);
+    rlusdAdapter.setPriceCap(newCap);
+    assertEq(rlusdAdapter.getPriceCap(), newCap, 'RLUSD cap not updated');
+
+    vm.prank(riskAdmin);
+    usdcAdapter.setPriceCap(newCap);
+    assertEq(usdcAdapter.getPriceCap(), newCap, 'USDC cap not updated');
+  }
+
+  /// @dev Fuzz: for any positive underlying answer, the pool oracle returns
+  /// `min(underlying, cap)`
+  function test_priceCap_fuzz_minOfUnderlyingAndCap(int256 underlyingAnswer) public {
+    underlyingAnswer = int256(bound(underlyingAnswer, 1, int256(type(int128).max)));
+
+    _executePayload();
+    IAaveOracle oracle = IAaveOracle(AaveV3EthereumHorizon.ORACLE);
+
+    _assertFuzzedBounded(
+      oracle,
+      AaveV3EthereumHorizonAssets.RLUSD_UNDERLYING,
+      rlusdAdapter,
+      underlyingAnswer,
+      'RLUSD'
+    );
+    _assertFuzzedBounded(
+      oracle,
+      AaveV3EthereumHorizonAssets.USDC_UNDERLYING,
+      usdcAdapter,
+      underlyingAnswer,
+      'USDC'
+    );
+  }
+
+  /// @dev Defensive: before the payload runs, neither new adapter is already wired
+  /// to any reserve. Catches a deploy-time collision
+  function test_newAdapters_notAlreadySet_preExec() public view {
+    IAaveOracle oracle = IAaveOracle(AaveV3EthereumHorizon.ORACLE);
+    address[] memory reserves = _pool().getReservesList();
+
+    for (uint256 i; i < reserves.length; ++i) {
+      address source = oracle.getSourceOfAsset(reserves[i]);
+      assertNotEq(
+        source,
+        newRlusdOracle,
+        string.concat(
+          'reserve ',
+          vm.toString(reserves[i]),
+          ' already uses new RLUSD adapter pre-exec'
+        )
+      );
+      assertNotEq(
+        source,
+        newUsdcOracle,
+        string.concat(
+          'reserve ',
+          vm.toString(reserves[i]),
+          ' already uses new USDC adapter pre-exec'
+        )
+      );
+    }
+  }
+
+  /// @dev Post-exec: `oracle.getAssetPrice` equals `adapter.latestAnswer()` exactly.
+  /// Catches scaling / decoding bugs at the IAaveOracle layer
+  function test_adapterAnswer_matches_poolPrice_postExec() public {
+    _executePayload();
+
+    IAaveOracle oracle = IAaveOracle(AaveV3EthereumHorizon.ORACLE);
+
+    int256 rlusdAnswer = AggregatorInterface(newRlusdOracle).latestAnswer();
+    assertGt(rlusdAnswer, 0, 'RLUSD adapter latestAnswer must be > 0');
+    assertEq(
+      oracle.getAssetPrice(AaveV3EthereumHorizonAssets.RLUSD_UNDERLYING),
+      uint256(rlusdAnswer),
+      'RLUSD: pool oracle price != adapter latestAnswer'
+    );
+
+    int256 usdcAnswer = AggregatorInterface(newUsdcOracle).latestAnswer();
+    assertGt(usdcAnswer, 0, 'USDC adapter latestAnswer must be > 0');
+    assertEq(
+      oracle.getAssetPrice(AaveV3EthereumHorizonAssets.USDC_UNDERLYING),
+      uint256(usdcAnswer),
+      'USDC: pool oracle price != adapter latestAnswer'
+    );
+  }
+
   function _executePayload() internal {
     _executeHorizonPayload(address(proposal));
   }
@@ -467,5 +571,31 @@ contract AaveV3Horizon_PriceFeed_20260404_Test is ProtocolV3HorizonTestBase {
       return newUsdcOracle;
     }
     return super._expectedPriceFeed(underlying);
+  }
+
+  function _assertFuzzedBounded(
+    IAaveOracle oracle,
+    address underlying,
+    IPriceCapAdapterStable adapter,
+    int256 underlyingAnswer,
+    string memory label
+  ) internal {
+    int256 cap = adapter.getPriceCap();
+    int256 expected = underlyingAnswer < cap ? underlyingAnswer : cap;
+
+    vm.mockCall(
+      adapter.ASSET_TO_USD_AGGREGATOR(),
+      abi.encodeWithSelector(AggregatorInterface.latestAnswer.selector),
+      abi.encode(underlyingAnswer)
+    );
+
+    uint256 actual = oracle.getAssetPrice(underlying);
+    assertEq(
+      actual,
+      uint256(expected),
+      string.concat(label, ': pool price != min(underlying, cap)')
+    );
+
+    vm.clearMockedCalls();
   }
 }
