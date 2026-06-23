@@ -1,0 +1,44 @@
+diffs/AaveV3Horizon_mGLOBALListing_20260616_before_AaveV3Horizon_mGLOBALListing_20260616_after.md
+  s_e754d78bf9cea6::t_e50ef4196058df 22-23,152-153,366
+  s_e754d78bf9cea6::t_cf0dd192c2bd18 12,48-97,102-129,159,348-359
+src/AaveV3Horizon_mGLOBALListing_20260616/AaveV3Horizon_mGLOBALListing_20260616.sol
+  s_e754d78bf9cea6::t_1847b8fb8ef987 41-42
+  s_e754d78bf9cea6::t_c954fa1aa8b49a 5,14,21,45,58-107
+  h_0f977de3f043fc 16
+  s_e754d78bf9cea6::t_00b65f34756cf3 15
+src/AaveV3Horizon_mGLOBALListing_20260616/AaveV3Horizon_mGLOBALListing_20260616.t.sol
+  s_e754d78bf9cea6::t_5ba86086cf67f9 5,7
+  s_e754d78bf9cea6::t_da0a7f0e188734 94-99
+  s_e754d78bf9cea6::t_e856c9211f0ad6 106-108
+  s_e754d78bf9cea6::t_d34a915b76d2ef 110-135,139
+  s_e754d78bf9cea6::t_4937e25db34729 12,18,33,38-39,50-60
+  s_e754d78bf9cea6::t_c98a6ca38134a8 136-138
+  s_e754d78bf9cea6::t_9999e559142f2c 74
+tests/utils/ProtocolV3HorizonTestBase.sol
+  s_e754d78bf9cea6::t_7d0cda18c6c283 298-310
+  s_e754d78bf9cea6::t_c003f6eb9d87a9 248-249
+  s_e754d78bf9cea6::t_ca70511f92a9ab 311-312
+  s_e754d78bf9cea6::t_c368f1e9be6439 233-239
+  s_e754d78bf9cea6::t_17395a981a576e 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "758a11da286c86c8c9d5b78045b1197dc1b0f157",
+  "prompts": {},
+  "humans": {
+    "h_0f977de3f043fc": {
+      "author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_e754d78bf9cea6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec94892e-8aa9-4141-ba6b-92d4b6de9f83",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}
