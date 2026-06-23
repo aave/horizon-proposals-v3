@@ -96,7 +96,7 @@ contract AaveV3Horizon_mGLOBALListing_20260616_Test is
     // the eMode category must be unused before execution (no collateral/borrowable assets, no label)
     assertEq(pool.getEModeCategoryCollateralBitmap(eModeCategory), 0, 'emode collateral not empty');
     assertEq(pool.getEModeCategoryBorrowableBitmap(eModeCategory), 0, 'emode borrowable not empty');
-    assertEq(pool.getEModeCategoryLabel(eModeCategory), '', 'emode label not empty');
+    assertEq(bytes(pool.getEModeCategoryLabel(eModeCategory)).length, 0, 'emode label not empty');
 
     // execute payload
     _executeHorizonPayload(address(proposal));
