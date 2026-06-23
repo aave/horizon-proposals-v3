@@ -139,26 +139,3 @@ contract AaveV3Horizon_mGLOBALListing_20260616_Test is
     vm.stopPrank();
   }
 }
-
-/**
- * @dev Post-execution fork test. Run after the payload has been executed on mainnet
- *      to validate the live state matches expected config and run full E2E.
- * command: FOUNDRY_PROFILE=test forge test --match-contract AaveV3Horizon_mGLOBALListing_20260616_PostExecution_Test -vv
- */
-contract AaveV3Horizon_mGLOBALListing_20260616_PostExecution_Test is
-  AaveV3Horizon_mGLOBALListing_20260616_TestBase
-{
-  function setUp() public virtual override {
-    super.setUp();
-    vm.createSelectFork(vm.rpcUrl('mainnet'));
-  }
-
-  function test_defaultProposalExecution() public {
-    defaultTest_v3_3_postExecution(_pool());
-  }
-
-  function test_mglobalConfig() public {
-    _assertAssetConfig(_pool(), expectedAssetConfig);
-    _assertEModeConfig(_pool(), expectedEModeConfig);
-  }
-}
