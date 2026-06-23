@@ -1,0 +1,25 @@
+src/AaveV3Horizon_mGLOBALListing_20260616/AaveV3Horizon_mGLOBALListing_20260616.t.sol
+  h_0f977de3f043fc 153
+  s_e754d78bf9cea6::t_66f63d2ef267bf 142-152,154-164
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.10",
+  "base_commit_sha": "f61ee67f0ca186613c49ff2e6c9f70810aabe279",
+  "prompts": {},
+  "humans": {
+    "h_0f977de3f043fc": {
+      "author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_e754d78bf9cea6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec94892e-8aa9-4141-ba6b-92d4b6de9f83",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}
