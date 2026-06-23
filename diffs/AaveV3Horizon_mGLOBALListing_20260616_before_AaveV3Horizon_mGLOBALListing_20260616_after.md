@@ -9,7 +9,7 @@
 | decimals | 18 |
 | isActive | true |
 | isFrozen | false |
-| supplyCap | 60,000,000 mGLOBAL |
+| supplyCap | 50,000,000 mGLOBAL |
 | borrowCap | 0 mGLOBAL |
 | debtCeiling | 0 $ [0] |
 | isSiloed | false |
@@ -19,8 +19,8 @@
 | oracleDescription | mGLOBAL NAV |
 | oracleLatestAnswer | 1 |
 | usageAsCollateralEnabled | true |
-| ltv | 70 % [7000] |
-| liquidationThreshold | 75 % [7500] |
+| ltv | 0.05 % [5] |
+| liquidationThreshold | 0.1 % [10] |
 | liquidationBonus | 6 % |
 | liquidationProtocolFee | 0 % [0] |
 | reserveFactor | 0 % [0] |
@@ -45,10 +45,88 @@
 | interestRate | ![ir](https://dash.onaave.com/api/static?variableRateSlope1=0&variableRateSlope2=0&optimalUsageRatio=990000000000000000000000000&baseVariableBorrowRate=0&maxVariableBorrowRate=0) |
 
 
+## Emodes changed
+
+### EMode: VBILL GHO(id: 1)
+
+
+
+### EMode: USTB GHO(id: 2)
+
+
+
+### EMode: ACRED GHO(id: 3)
+
+
+
+### EMode: USCC GHO(id: 4)
+
+
+
+### EMode: mGLOBAL Stablecoins(id: 5)
+
+| description | value before | value after |
+| --- | --- | --- |
+| eMode.label | - | mGLOBAL Stablecoins |
+| eMode.ltv | 85 % | 75 % |
+| eMode.liquidationThreshold | 89 % | 80 % |
+| eMode.liquidationBonus | 3.1 % | 6 % |
+| eMode.borrowableBitmap |  | USDC, RLUSD |
+| eMode.collateralBitmap |  | mGLOBAL |
+
+
+### EMode: USYC GHO(id: 6)
+
+
+
+### EMode: (id: 7)
+
+
+
+### EMode: JTRSY GHO(id: 8)
+
+
+
+### EMode: (id: 9)
+
+
+
+### EMode: JAAA GHO(id: 10)
+
+
+
 ## Raw diff
 
 ```json
 {
+  "eModes": {
+    "5": {
+      "borrowableBitmap": {
+        "from": "0",
+        "to": "6"
+      },
+      "collateralBitmap": {
+        "from": "0",
+        "to": "1024"
+      },
+      "label": {
+        "from": "",
+        "to": "mGLOBAL Stablecoins"
+      },
+      "liquidationBonus": {
+        "from": 10310,
+        "to": 10600
+      },
+      "liquidationThreshold": {
+        "from": 8900,
+        "to": 8000
+      },
+      "ltv": {
+        "from": 8500,
+        "to": 7500
+      }
+    }
+  },
   "reserves": {
     "0x7433806912Eae67919e66aea853d46Fa0aef98A8": {
       "from": null,
@@ -71,14 +149,14 @@
         "isSiloed": false,
         "liquidationBonus": 10600,
         "liquidationProtocolFee": 0,
-        "liquidationThreshold": 7500,
-        "ltv": 7000,
+        "liquidationThreshold": 10,
+        "ltv": 5,
         "oracle": "0xB92A68763b2F83e094595c7B41a7FB9D0f8Da193",
         "oracleDecimals": 8,
         "oracleDescription": "mGLOBAL NAV",
         "oracleLatestAnswer": "100000000",
         "reserveFactor": 0,
-        "supplyCap": 60000000,
+        "supplyCap": 50000000,
         "symbol": "mGLOBAL",
         "underlying": "0x7433806912Eae67919e66aea853d46Fa0aef98A8",
         "usageAsCollateralEnabled": true,
@@ -267,13 +345,25 @@
           "previousValue": "0x00000000000000000000000000000000000000000000000a0000000000000000",
           "newValue": "0x00000000000000000000000000000000000000000000000b0000000000000000"
         },
+        "0x50039cf134a124858bd88bbc9225ec3c537b89a0e9237ce39fe1813e6edf8257": {
+          "previousValue": "0x0000000000000000000000000000000000000000000000000000284622c42134",
+          "newValue": "0x000000000000000000000000000000000000000000000000040029681f401d4c"
+        },
+        "0x50039cf134a124858bd88bbc9225ec3c537b89a0e9237ce39fe1813e6edf8258": {
+          "previousValue": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "newValue": "0x6d474c4f42414c20537461626c65636f696e7300000000000000000000000026"
+        },
+        "0x50039cf134a124858bd88bbc9225ec3c537b89a0e9237ce39fe1813e6edf8259": {
+          "previousValue": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "newValue": "0x0000000000000000000000000000000000000000000000000000000000000006"
+        },
         "0x76aacc2028d991243e90f9a326795e305ddcc7830dc0c1d3a776810a5954c285": {
           "previousValue": "0x0000000000000000000000000000000000000000000000000000000000000000",
           "newValue": "0x0000000000000000000000007433806912eae67919e66aea853d46fa0aef98a8"
         },
         "0xb8b11b42f14bd8c450ab0cf5dc493bc59a3f2f9ec09daceae1db9473a3c45000": {
           "previousValue": "0x0000000000000000000000000000000000000000000000000000000000000000",
-          "newValue": "0x100000000000000000000000000039387000000000000000011229681d4c1b58"
+          "newValue": "0x10000000000000000000000000002faf080000000000000001122968000a0005"
         },
         "0xb8b11b42f14bd8c450ab0cf5dc493bc59a3f2f9ec09daceae1db9473a3c45001": {
           "previousValue": "0x0000000000000000000000000000000000000000000000000000000000000000",
