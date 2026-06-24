@@ -55,6 +55,20 @@ contract AaveV3Horizon_mGLOBALPriceFeed_20260623 is ProtocolV3HorizonTestBase {
     assertEq(oracle.getSourceOfAsset(MGLOBAL), BOUNDED_PRICE_FEED, 'price feed after');
   }
 
+  /**
+   * @dev The bounded feed should report the same price as the unbounded feed while within bounds
+   *      (i.e. no cap is applied), so the reported mGLOBAL price is unchanged by the swap.
+   */
+  function test_mglobalPriceUnchanged() public {
+    IAaveOracle oracle = AaveV3EthereumHorizon.ORACLE;
+
+    uint256 priceBefore = oracle.getAssetPrice(MGLOBAL);
+
+    _executeMGLOBALPriceFeedUpdate();
+
+    assertEq(oracle.getAssetPrice(MGLOBAL), priceBefore, 'price changed after feed swap');
+  }
+
   function test_calldata() public pure {
     address[] memory assets = new address[](1);
     assets[0] = MGLOBAL;
