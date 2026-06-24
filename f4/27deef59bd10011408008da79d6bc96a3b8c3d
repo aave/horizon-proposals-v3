@@ -1,0 +1,19 @@
+src/AaveV3Horizon_mGLOBALPriceFeed_20260623/AaveV3Horizon_mGLOBALPriceFeed_20260623.t.sol
+  s_e754d78bf9cea6::t_d12f870a8f9d8e 58-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "f427deef59bd10011408008da79d6bc96a3b8c3d",
+  "prompts": {},
+  "sessions": {
+    "s_e754d78bf9cea6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec94892e-8aa9-4141-ba6b-92d4b6de9f83",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}
