@@ -15,10 +15,10 @@ contract AaveV3Horizon_PriceFeed_20260404_DeployedForkTest is
 {
   // https://etherscan.io/address/0xda6b3b075232725cdc34e0cb47859e5960765e7b
   address internal constant DEPLOYED_PAYLOAD = 0xdA6B3B075232725cDC34E0cb47859E5960765e7B;
-  uint256 internal constant DEPLOYED_FORK_BLOCK = 25119303;
+  uint256 internal constant DEPLOYED_FORK_BLOCK = 25424006;
 
   function setUp() public override {
-    vm.createSelectFork(vm.rpcUrl('mainnet'));
+    vm.createSelectFork(vm.rpcUrl('mainnet'), DEPLOYED_FORK_BLOCK);
 
     require(
       DEPLOYED_PAYLOAD.code.length > 0,

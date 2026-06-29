@@ -35,7 +35,7 @@ contract AaveV3Horizon_PriceFeed_20260404_Test is ProtocolV3HorizonTestBase {
   uint256 internal constant ONE_BPS = 1e14;
 
   function setUp() public virtual {
-    vm.createSelectFork(vm.rpcUrl('mainnet'), 24852499);
+    vm.createSelectFork(vm.rpcUrl('mainnet'), 25424006);
     proposal = new AaveV3Horizon_PriceFeed_20260404();
 
     newRlusdOracle = proposal.NEW_RLUSD_ORACLE();
@@ -587,12 +587,13 @@ contract AaveV3Horizon_PriceFeed_20260404_Test is ProtocolV3HorizonTestBase {
   }
 
   /// @dev Override expected price feeds so the snapshot validator in defaultTest accepts the new oracles.
-  function _expectedPriceFeed(address underlying) internal override returns (address) {
+  /// Returns the proposal's `NEW_*_ORACLE` constants as literals to keep this `pure` (matching the base helper).
+  function _expectedPriceFeed(address underlying) internal pure override returns (address) {
     if (underlying == AaveV3EthereumHorizonAssets.RLUSD_UNDERLYING) {
-      return newRlusdOracle;
+      return 0x9E7c31e9b3C76Ea759D9f7464210353862F0c957; // NEW_RLUSD_ORACLE
     }
     if (underlying == AaveV3EthereumHorizonAssets.USDC_UNDERLYING) {
-      return newUsdcOracle;
+      return 0x46f94aff8cF7DdC8557eF69f7276087b01C8f363; // NEW_USDC_ORACLE
     }
     return super._expectedPriceFeed(underlying);
   }

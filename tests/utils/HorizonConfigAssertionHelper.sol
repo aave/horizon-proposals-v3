@@ -353,7 +353,7 @@ abstract contract HorizonConfigAssertionHelper is Test {
     );
   }
 
-  function _validateOracles(IPool pool, ReserveConfig[] memory configs) internal {
+  function _validateOracles(IPool pool, ReserveConfig[] memory configs) internal view {
     IAaveOracle oracle = IAaveOracle(
       IPoolAddressesProvider(pool.ADDRESSES_PROVIDER()).getPriceOracle()
     );
@@ -375,7 +375,7 @@ abstract contract HorizonConfigAssertionHelper is Test {
     }
   }
 
-  function _expectedPriceFeed(address underlying) internal virtual returns (address) {
+  function _expectedPriceFeed(address underlying) internal pure virtual returns (address) {
     if (underlying == AaveV3EthereumHorizonAssets.USTB_UNDERLYING) {
       return AaveV3EthereumHorizonAssets.USTB_ORACLE;
     }

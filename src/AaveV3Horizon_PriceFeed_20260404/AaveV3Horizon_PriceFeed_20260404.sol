@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import {AaveV3EthereumHorizonAssets} from 'aave-address-book-latest/AaveV3EthereumHorizon.sol';
-import {AaveV3EthereumAssets} from 'aave-address-book-latest/AaveV3Ethereum.sol';
 import {AaveV3PayloadHorizonEthereum} from 'src/utils/AaveV3PayloadHorizonEthereum.sol';
 import {IAaveV3ConfigEngine as IEngine} from 'aave-v3-origin/contracts/extensions/v3-config-engine/IAaveV3ConfigEngine.sol';
 
