@@ -1,0 +1,28 @@
+src/utils/AaveV3EthereumHorizonCustom.sol
+  s_b3e9e271ac9b07::t_0734a16fa546a0 60-61
+tests/utils/HorizonConfigAssertionHelper.sol
+  s_b3e9e271ac9b07::t_67d6b7bd85df64 356
+  s_b3e9e271ac9b07::t_d951bf61065d52 378
+src/AaveV3Horizon_PriceFeed_20260404/AaveV3Horizon_PriceFeed_20260404.t.sol
+  s_b3e9e271ac9b07::t_88ffac5b86b202 38
+  s_b3e9e271ac9b07::t_5b311904295ed8 590-591,593,596
+src/AaveV3Horizon_PriceFeed_20260404/AaveV3Horizon_PriceFeed_20260404_DeployedFork.t.sol
+  s_b3e9e271ac9b07::t_7db821f1dd9a7f 18
+  s_b3e9e271ac9b07::t_f98afe908dc1b9 21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "8a74177f0f771d45385ac17241a7e7160e7c2843",
+  "prompts": {},
+  "sessions": {
+    "s_b3e9e271ac9b07": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5cfb4121-0c8a-483a-a880-41a00c003d69",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}
