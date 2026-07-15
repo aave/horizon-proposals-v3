@@ -374,37 +374,6 @@ contract AaveV3Horizon_PriceFeed_20260404_Test is ProtocolV3HorizonTestBase {
     _assertCapBounded(oracle, AaveV3EthereumHorizonAssets.USDC_UNDERLYING, usdcAdapter, 'USDC');
   }
 
-  function _assertCapBounded(
-    IAaveOracle oracle,
-    address underlying,
-    IPriceCapAdapterStable adapter,
-    string memory label
-  ) internal {
-    int256 priceCap = adapter.getPriceCap();
-    int256 spike = priceCap + int256(1e7); // $0.10 above cap
-
-    address underlyingFeed = adapter.ASSET_TO_USD_AGGREGATOR();
-    vm.mockCall(
-      underlyingFeed,
-      abi.encodeWithSelector(AggregatorInterface.latestAnswer.selector),
-      abi.encode(spike)
-    );
-    vm.mockCall(
-      underlyingFeed,
-      abi.encodeWithSelector(AggregatorInterface.latestRoundData.selector),
-      abi.encode(uint80(1), spike, block.timestamp, block.timestamp, uint80(1))
-    );
-
-    uint256 priceFromPool = oracle.getAssetPrice(underlying);
-    assertEq(
-      priceFromPool,
-      uint256(priceCap),
-      string.concat(label, ': pool oracle price not clamped to cap on upstream spike')
-    );
-
-    vm.clearMockedCalls();
-  }
-
   /// @dev when the underlying feed reports a price below the cap, the pool oracle must pass it through uncapped
   function test_priceFlowsThrough_belowCap_viaPool_after() public virtual {
     _executePayload();
@@ -444,38 +413,6 @@ contract AaveV3Horizon_PriceFeed_20260404_Test is ProtocolV3HorizonTestBase {
         string.concat('non-target reserve config changed: ', vm.toString(reserves[i]))
       );
     }
-  }
-
-  function _assertPriceFlowsThrough(
-    IAaveOracle oracle,
-    address underlying,
-    IPriceCapAdapterStable adapter,
-    string memory label
-  ) internal {
-    int256 priceCap = adapter.getPriceCap();
-    int256 belowCap = priceCap - int256(1e6); // $0.01 below cap in 8-decimal precision
-    require(belowCap > 0, 'belowCap should be positive');
-
-    address underlyingFeed = adapter.ASSET_TO_USD_AGGREGATOR();
-    vm.mockCall(
-      underlyingFeed,
-      abi.encodeWithSelector(AggregatorInterface.latestAnswer.selector),
-      abi.encode(belowCap)
-    );
-    vm.mockCall(
-      underlyingFeed,
-      abi.encodeWithSelector(AggregatorInterface.latestRoundData.selector),
-      abi.encode(uint80(1), belowCap, block.timestamp, block.timestamp, uint80(1))
-    );
-
-    uint256 priceFromPool = oracle.getAssetPrice(underlying);
-    assertEq(
-      priceFromPool,
-      uint256(belowCap),
-      string.concat(label, ': pool oracle should pass through underlying when below cap')
-    );
-
-    vm.clearMockedCalls();
   }
 
   /// @dev `setPriceCap` only callable by `CallerIsNotRiskOrPoolAdmin`
@@ -586,16 +523,67 @@ contract AaveV3Horizon_PriceFeed_20260404_Test is ProtocolV3HorizonTestBase {
     _executeHorizonPayload(address(proposal));
   }
 
-  /// @dev Override expected price feeds so the snapshot validator in defaultTest accepts the new oracles.
-  /// Returns the proposal's `NEW_*_ORACLE` constants as literals to keep this `pure` (matching the base helper).
-  function _expectedPriceFeed(address underlying) internal pure override returns (address) {
-    if (underlying == AaveV3EthereumHorizonAssets.RLUSD_UNDERLYING) {
-      return 0x9E7c31e9b3C76Ea759D9f7464210353862F0c957; // NEW_RLUSD_ORACLE
-    }
-    if (underlying == AaveV3EthereumHorizonAssets.USDC_UNDERLYING) {
-      return 0x46f94aff8cF7DdC8557eF69f7276087b01C8f363; // NEW_USDC_ORACLE
-    }
-    return super._expectedPriceFeed(underlying);
+  function _assertCapBounded(
+    IAaveOracle oracle,
+    address underlying,
+    IPriceCapAdapterStable adapter,
+    string memory label
+  ) internal {
+    int256 priceCap = adapter.getPriceCap();
+    int256 spike = priceCap + int256(1e7); // $0.10 above cap
+
+    address underlyingFeed = adapter.ASSET_TO_USD_AGGREGATOR();
+    vm.mockCall(
+      underlyingFeed,
+      abi.encodeWithSelector(AggregatorInterface.latestAnswer.selector),
+      abi.encode(spike)
+    );
+    vm.mockCall(
+      underlyingFeed,
+      abi.encodeWithSelector(AggregatorInterface.latestRoundData.selector),
+      abi.encode(uint80(1), spike, block.timestamp, block.timestamp, uint80(1))
+    );
+
+    uint256 priceFromPool = oracle.getAssetPrice(underlying);
+    assertEq(
+      priceFromPool,
+      uint256(priceCap),
+      string.concat(label, ': pool oracle price not clamped to cap on upstream spike')
+    );
+
+    vm.clearMockedCalls();
+  }
+
+  function _assertPriceFlowsThrough(
+    IAaveOracle oracle,
+    address underlying,
+    IPriceCapAdapterStable adapter,
+    string memory label
+  ) internal {
+    int256 priceCap = adapter.getPriceCap();
+    int256 belowCap = priceCap - int256(1e6); // $0.01 below cap in 8-decimal precision
+    require(belowCap > 0, 'belowCap should be positive');
+
+    address underlyingFeed = adapter.ASSET_TO_USD_AGGREGATOR();
+    vm.mockCall(
+      underlyingFeed,
+      abi.encodeWithSelector(AggregatorInterface.latestAnswer.selector),
+      abi.encode(belowCap)
+    );
+    vm.mockCall(
+      underlyingFeed,
+      abi.encodeWithSelector(AggregatorInterface.latestRoundData.selector),
+      abi.encode(uint80(1), belowCap, block.timestamp, block.timestamp, uint80(1))
+    );
+
+    uint256 priceFromPool = oracle.getAssetPrice(underlying);
+    assertEq(
+      priceFromPool,
+      uint256(belowCap),
+      string.concat(label, ': pool oracle should pass through underlying when below cap')
+    );
+
+    vm.clearMockedCalls();
   }
 
   function _assertFuzzedBounded(
@@ -622,5 +610,17 @@ contract AaveV3Horizon_PriceFeed_20260404_Test is ProtocolV3HorizonTestBase {
     );
 
     vm.clearMockedCalls();
+  }
+
+  /// @dev Override expected price feeds so the snapshot validator in defaultTest accepts the new oracles.
+  /// Returns the proposal's `NEW_*_ORACLE` constants as literals to keep this `pure` (matching the base helper).
+  function _expectedPriceFeed(address underlying) internal pure override returns (address) {
+    if (underlying == AaveV3EthereumHorizonAssets.RLUSD_UNDERLYING) {
+      return 0x9E7c31e9b3C76Ea759D9f7464210353862F0c957; // NEW_RLUSD_ORACLE
+    }
+    if (underlying == AaveV3EthereumHorizonAssets.USDC_UNDERLYING) {
+      return 0x46f94aff8cF7DdC8557eF69f7276087b01C8f363; // NEW_USDC_ORACLE
+    }
+    return super._expectedPriceFeed(underlying);
   }
 }
