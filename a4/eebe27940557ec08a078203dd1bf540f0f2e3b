@@ -1,0 +1,20 @@
+src/AaveV3Horizon_PriceFeed_20260404/AaveV3Horizon_PriceFeed_20260404.t.sol
+  s_486eafd883f378::t_000892bf58101d 526-586
+  s_486eafd883f378::t_f2f698bdcce879 614-625
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "a4eebe27940557ec08a078203dd1bf540f0f2e3b",
+  "prompts": {},
+  "sessions": {
+    "s_486eafd883f378": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c225a13e-ad82-4ad0-9c7c-1115e96b3c71",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}
