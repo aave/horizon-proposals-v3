@@ -1,0 +1,19 @@
+diffs/AaveV3Horizon_PriceFeed_20260404_before_AaveV3Horizon_PriceFeed_20260404_after.md
+  s_37a9d491eea318::t_9fb8a141e42669 49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "362aecdba98b5ed4b0e02c7205c2d1d45fc5949a",
+  "prompts": {},
+  "sessions": {
+    "s_37a9d491eea318": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b9fd6ba7-db5e-487e-9ccc-e43eea8691c8",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}
