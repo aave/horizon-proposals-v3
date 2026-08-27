@@ -1,0 +1,31 @@
+src/interfaces/IRwaATokenManager.sol
+  s_a3cd3cc44a6cd5::t_070daeff8cba29 1-75
+src/AaveV3Horizon_RwaATokenAdmins_20260827/AaveV3Horizon_RwaATokenAdmins_20260827.t.sol
+  s_a3cd3cc44a6cd5::t_aeebfc4cba4b34 565
+  s_a3cd3cc44a6cd5::t_d47e0a08146cc5 24-25
+  s_a3cd3cc44a6cd5::t_e7cddf3b91c05e 50-55
+  s_a3cd3cc44a6cd5::t_0d300aad13381b 1-23,26-49,56-469,482-564,566-584
+  s_a3cd3cc44a6cd5::t_1c0b2d5f4f3825 470-481
+foundry.toml
+  s_a3cd3cc44a6cd5::t_aec93dbe053e10 16
+src/AaveV3Horizon_RwaATokenAdmins_20260827/AaveV3Horizon_RwaATokenAdmins_20260827.json
+  s_a3cd3cc44a6cd5::t_d47e0a08146cc5 1
+diffs/AaveV3Horizon_RwaATokenAdmins_20260827_before_AaveV3Horizon_RwaATokenAdmins_20260827_after.md
+  s_a3cd3cc44a6cd5::t_6f7ac8bb978dad 1-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "ed46896eb6dc29375f4a3874e2335e2bd38a0f8e",
+  "prompts": {},
+  "sessions": {
+    "s_a3cd3cc44a6cd5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d20794cb-dbc6-41b3-89bf-cb0b7a11dd70",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}
