@@ -21,8 +21,7 @@ interface IRwaAToken {
  * command: FOUNDRY_PROFILE=test forge test --match-contract AaveV3Horizon_RwaATokenAdmins_20260827 -vv
  */
 contract AaveV3Horizon_RwaATokenAdmins_20260827 is ProtocolV3HorizonTestBase {
-  // https://etherscan.io/address/0x803e5Db3E26e88AD0a682A46c3E04cdd053D0EB9
-  address internal constant RWA_A_TOKEN_MANAGER = 0x803e5Db3E26e88AD0a682A46c3E04cdd053D0EB9;
+  address internal constant RWA_A_TOKEN_MANAGER = AaveV3EthereumHorizon.RWA_A_TOKEN_MANAGER;
 
   // issuer transfer admin wallets
   // https://etherscan.io/address/0xad309BB6f13074128b4F23EF9EA2fe8552AfCA83
@@ -32,11 +31,9 @@ contract AaveV3Horizon_RwaATokenAdmins_20260827 is ProtocolV3HorizonTestBase {
   address internal constant SUPERSTATE_USCC_TRANSFER_ADMIN =
     0x8abC89D9b56dFD90dA18e8E18CFaC9111100bDd1;
   // https://etherscan.io/address/0x7Bf090B97f896fB77e852CC98aa52A8Cb7DC02eC
-  address internal constant CENTRIFUGE_TRANSFER_ADMIN =
-    0x7Bf090B97f896fB77e852CC98aa52A8Cb7DC02eC;
+  address internal constant CENTRIFUGE_TRANSFER_ADMIN = 0x7Bf090B97f896fB77e852CC98aa52A8Cb7DC02eC;
   // https://etherscan.io/address/0x0C607d48fAe9ac1D3eA0c035864Ba3bAfB09D2d9
-  address internal constant SECURITIZE_TRANSFER_ADMIN =
-    0x0C607d48fAe9ac1D3eA0c035864Ba3bAfB09D2d9;
+  address internal constant SECURITIZE_TRANSFER_ADMIN = 0x0C607d48fAe9ac1D3eA0c035864Ba3bAfB09D2d9;
   // https://etherscan.io/address/0x8003544D32eE074aA8A1fb72129Fa8Ef7fe02E5f
   address internal constant MIDAS_TRANSFER_ADMIN = 0x8003544D32eE074aA8A1fb72129Fa8Ef7fe02E5f;
 
@@ -293,7 +290,10 @@ contract AaveV3Horizon_RwaATokenAdmins_20260827 is ProtocolV3HorizonTestBase {
       }
       // the multisig administers roles but must not hold the transfer role itself
       assertFalse(
-        manager.hasAuthorizedTransferRole(aTokens[t], AaveV3EthereumHorizonCustom.HORIZON_EMERGENCY),
+        manager.hasAuthorizedTransferRole(
+          aTokens[t],
+          AaveV3EthereumHorizonCustom.HORIZON_EMERGENCY
+        ),
         'emergency multisig must not hold transfer role'
       );
     }
@@ -349,7 +349,12 @@ contract AaveV3Horizon_RwaATokenAdmins_20260827 is ProtocolV3HorizonTestBase {
 
     vm.startPrank(supplier);
     IERC20(grant.underlying).approve(address(_pool()), amount);
-    _pool().supply({asset: grant.underlying, amount: amount, onBehalfOf: supplier, referralCode: 0});
+    _pool().supply({
+      asset: grant.underlying,
+      amount: amount,
+      onBehalfOf: supplier,
+      referralCode: 0
+    });
     vm.stopPrank();
 
     _assertAuthorizedTransferWorks(grant, supplier);
