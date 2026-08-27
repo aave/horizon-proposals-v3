@@ -1,0 +1,21 @@
+.github/workflows/test.yml
+  s_a3cd3cc44a6cd5::t_310cd8a06fe819 19,32,38,44,50,60
+.github/workflows/comment.yml
+  s_a3cd3cc44a6cd5::t_2d501c14b6c6c4 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "87b2d2d76691f744b415cc3a305d9b25040e84a0",
+  "prompts": {},
+  "sessions": {
+    "s_a3cd3cc44a6cd5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d20794cb-dbc6-41b3-89bf-cb0b7a11dd70",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}
