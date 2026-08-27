@@ -40,12 +40,6 @@ contract AaveV3Horizon_RwaATokenAdmins_20260827 is ProtocolV3HorizonTestBase {
   // https://etherscan.io/address/0x8003544D32eE074aA8A1fb72129Fa8Ef7fe02E5f
   address internal constant MIDAS_TRANSFER_ADMIN = 0x8003544D32eE074aA8A1fb72129Fa8Ef7fe02E5f;
 
-  // aTokens not yet in the address book
-  // https://etherscan.io/address/0xc293744fFbcf46696D589f5C415e71BC491519cD
-  address internal constant ACRED_A_TOKEN = 0xc293744fFbcf46696D589f5C415e71BC491519cD;
-  // https://etherscan.io/address/0x49d3cdE03813eE32DFD47F6aA3957d5F9CbAB985
-  address internal constant MGLOBAL_A_TOKEN = 0x49d3cdE03813eE32DFD47F6aA3957d5F9CbAB985;
-
   // existing aToken holders at the fork block, used to exercise authorized transfers
   address internal constant AUSTB_HOLDER = 0xcf25feDB1A51edC27DBA47C87c28be1c983168Fb;
   address internal constant AUSCC_HOLDER = 0x971B34b997843b82051b3e781d6A6d5A21BbDDA0;
@@ -126,8 +120,8 @@ contract AaveV3Horizon_RwaATokenAdmins_20260827 is ProtocolV3HorizonTestBase {
     grants.push(
       Grant({
         symbol: 'ACRED',
-        underlying: AaveV3EthereumHorizonCustom.ACRED_UNDERLYING,
-        aToken: ACRED_A_TOKEN,
+        underlying: AaveV3EthereumHorizonAssets.ACRED_UNDERLYING,
+        aToken: AaveV3EthereumHorizonAssets.ACRED_A_TOKEN,
         account: SECURITIZE_TRANSFER_ADMIN,
         holder: address(0) // no supply at fork block, supplied in test
       })
@@ -144,8 +138,8 @@ contract AaveV3Horizon_RwaATokenAdmins_20260827 is ProtocolV3HorizonTestBase {
     grants.push(
       Grant({
         symbol: 'mGLOBAL',
-        underlying: AaveV3EthereumHorizonCustom.MGLOBAL_UNDERLYING,
-        aToken: MGLOBAL_A_TOKEN,
+        underlying: AaveV3EthereumHorizonAssets.mGLOBAL_UNDERLYING,
+        aToken: AaveV3EthereumHorizonAssets.mGLOBAL_A_TOKEN,
         account: MIDAS_TRANSFER_ADMIN,
         holder: AMGLOBAL_HOLDER
       })
@@ -344,7 +338,7 @@ contract AaveV3Horizon_RwaATokenAdmins_20260827 is ProtocolV3HorizonTestBase {
     _executeGrants();
 
     Grant memory grant = grants[4];
-    assertEq(grant.aToken, ACRED_A_TOKEN, 'grant index mismatch');
+    assertEq(grant.aToken, AaveV3EthereumHorizonAssets.ACRED_A_TOKEN, 'grant index mismatch');
 
     address supplier = makeAddr('acredSupplier');
     _whitelistAcredRwa(supplier);
@@ -466,18 +460,6 @@ contract AaveV3Horizon_RwaATokenAdmins_20260827 is ProtocolV3HorizonTestBase {
   }
 
   // ─── Helpers ─────────────────────────────────────────────────────────
-
-  /// @dev USDC and RLUSD migrated to stable cap adapters (AaveV3Horizon_PriceFeed_20260404),
-  /// not yet reflected in the address book.
-  function _expectedPriceFeed(address underlying) internal pure override returns (address) {
-    if (underlying == AaveV3EthereumHorizonAssets.USDC_UNDERLYING) {
-      return 0x46f94aff8cF7DdC8557eF69f7276087b01C8f363;
-    }
-    if (underlying == AaveV3EthereumHorizonAssets.RLUSD_UNDERLYING) {
-      return 0x9E7c31e9b3C76Ea759D9f7464210353862F0c957;
-    }
-    return super._expectedPriceFeed(underlying);
-  }
 
   function _executeGrants() internal {
     (address to, bytes memory data, uint8 operation) = AaveHorizonGovV3Helpers
