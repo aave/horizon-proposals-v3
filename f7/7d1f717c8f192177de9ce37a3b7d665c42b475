@@ -1,0 +1,21 @@
+src/AaveV3Horizon_RwaATokenAdmins_20260827/AaveV3Horizon_RwaATokenAdmins_20260827.t.sol
+  s_a3cd3cc44a6cd5::t_e56d1d6ef1c757 123-124,141-142,341
+lib/aave-address-book
+  s_a3cd3cc44a6cd5::t_de7c5579dfd357 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "f77d1f717c8f192177de9ce37a3b7d665c42b475",
+  "prompts": {},
+  "sessions": {
+    "s_a3cd3cc44a6cd5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d20794cb-dbc6-41b3-89bf-cb0b7a11dd70",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}
