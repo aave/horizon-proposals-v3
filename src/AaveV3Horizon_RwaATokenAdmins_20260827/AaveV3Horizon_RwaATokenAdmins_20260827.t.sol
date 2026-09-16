@@ -13,6 +13,8 @@ import {Errors} from 'src/dependencies/Errors.sol';
 
 interface IRwaAToken {
   function authorizedTransfer(address from, address to, uint256 amount) external returns (bool);
+
+  function ATOKEN_ADMIN_ROLE() external pure returns (bytes32);
 }
 
 /**
@@ -153,14 +155,6 @@ contract AaveV3Horizon_RwaATokenAdmins_20260827 is ProtocolV3HorizonTestBase {
   /// @dev Sanity of the live manager wiring: it holds ATOKEN_ADMIN on the pool ACL, the
   /// Emergency multisig is its sole expected DEFAULT_ADMIN, and role derivation matches source.
   function test_managerSetup() public view {
-    assertTrue(
-      IAccessControl(address(AaveV3EthereumHorizon.ACL_MANAGER)).hasRole(
-        keccak256('ATOKEN_ADMIN'),
-        RWA_A_TOKEN_MANAGER
-      ),
-      'manager must hold ATOKEN_ADMIN on the ACL manager'
-    );
-
     IAccessControl acManager = IAccessControl(RWA_A_TOKEN_MANAGER);
     bytes32 defaultAdminRole = bytes32(0);
     assertTrue(
@@ -182,6 +176,13 @@ contract AaveV3Horizon_RwaATokenAdmins_20260827 is ProtocolV3HorizonTestBase {
       'AUTHORIZED_TRANSFER_ROLE mismatch'
     );
     for (uint256 i; i < grants.length; ++i) {
+      assertTrue(
+        IAccessControl(address(AaveV3EthereumHorizon.ACL_MANAGER)).hasRole(
+          IRwaAToken(grants[i].aToken).ATOKEN_ADMIN_ROLE(),
+          RWA_A_TOKEN_MANAGER
+        ),
+        string.concat(grants[i].symbol, ': manager must hold ATOKEN_ADMIN on the ACL manager')
+      );
       assertEq(
         manager.getAuthorizedTransferRole(grants[i].aToken),
         keccak256(abi.encode(keccak256('AUTHORIZED_TRANSFER'), grants[i].aToken)),
