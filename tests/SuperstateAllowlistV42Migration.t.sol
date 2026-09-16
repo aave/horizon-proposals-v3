@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import {Test} from 'forge-std/Test.sol';
-import {console2 as console} from 'forge-std/console2.sol';
 import {IERC20} from 'aave-v3-origin/contracts/dependencies/openzeppelin/contracts/IERC20.sol';
 import {IPool} from 'aave-v3-origin/contracts/interfaces/IPool.sol';
 import {IAaveOracle} from 'aave-v3-origin/contracts/interfaces/IAaveOracle.sol';
@@ -15,28 +14,29 @@ interface ISuperstateToken {
   function setAllowlist(address allowlist) external;
 
   function owner() external view returns (address);
+}
 
-  function symbol() external view returns (string memory);
+interface IAllowlistV4_2 {
+  function isAllowed(address addr, address token) external view returns (bool);
 }
 
 /// @dev Thrown by USTB/USCC when the sender or recipient is not allowlisted.
 error InsufficientPermissions();
 
-interface IAllowlistV4_2 {
-  function isAllowed(address addr, address token) external view returns (bool);
-
-  function VERSION() external pure returns (string memory);
-}
-
 /**
  * @dev Replays Horizon operations across the upcoming USTB/USCC allowlist switch.
  *      No allowlist state is mocked: actors are existing Horizon participants moving their own
- *      tokens. Only the USTB price and the liquidator's RLUSD are cheated.
+ *      tokens. Only the collateral price and the liquidator's RLUSD are cheated.
  *
  *      command: FOUNDRY_PROFILE=test forge test --match-contract SuperstateAllowlistV42Migration -vv
  */
 contract SuperstateAllowlistV42Migration is Test {
   uint256 internal constant FORK_BLOCK = 25988000;
+
+  /// @dev Health factor the liquidation tests aim for. Under 1 to liquidate, over 0.95 to keep the
+  ///      close factor at 50% so the partial liquidation leaves collateral and debt above the dust
+  ///      threshold.
+  uint256 internal constant TARGET_HEALTH_FACTOR = 0.97e18;
 
   address internal constant ALLOWLIST_V4_2 = 0xBcBC2b4FB2AbE1C598C9ea91E0b03338e4728D1f;
   address internal constant ALLOWLIST_V3 = 0x02f1fA8B196d21c7b733EB2700B825611d8A38E5;
@@ -45,8 +45,9 @@ contract SuperstateAllowlistV42Migration is Test {
   address internal constant USTB_SUPPLIER = 0x81286ac163aD542A9a9C9e4C42F181B003443A22;
   address internal constant USCC_SUPPLIER = 0xc242DEEF9E4dBdF394fE425630F9aa5762dB2faC;
 
-  // Existing borrower at FORK_BLOCK: USTB is its only collateral, RLUSD its only debt.
+  // Existing borrowers at FORK_BLOCK, each with a single collateral and RLUSD as its only debt.
   address internal constant USTB_BORROWER = 0xb6cbe8b123392eF6Aa72897bb85bd6515d2e8db7;
+  address internal constant USCC_BORROWER = 0x64471d103A7f77262529383D53Bdd28b260B1aE8;
 
   IPool internal constant POOL = AaveV3EthereumHorizon.POOL;
   IAaveOracle internal constant ORACLE = AaveV3EthereumHorizon.ORACLE;
@@ -76,7 +77,7 @@ contract SuperstateAllowlistV42Migration is Test {
   }
 
   /// @dev The aTokens hold the underlying, so they are the addresses that must survive the switch.
-  function test_aTokensProvisionedOnV4_2() public view {
+  function test_aTokenProvisioned_USTB() public view {
     assertTrue(
       IAllowlistV4_2(ALLOWLIST_V4_2).isAllowed(
         ustbAToken,
@@ -84,6 +85,9 @@ contract SuperstateAllowlistV42Migration is Test {
       ),
       'USTB aToken not allowed'
     );
+  }
+
+  function test_aTokenProvisioned_USCC() public view {
     assertTrue(
       IAllowlistV4_2(ALLOWLIST_V4_2).isAllowed(
         usccAToken,
@@ -92,6 +96,10 @@ contract SuperstateAllowlistV42Migration is Test {
       'USCC aToken not allowed'
     );
   }
+
+  /*//////////////////////////////////////////////////////////////
+                          WITHDRAW AND SUPPLY
+  //////////////////////////////////////////////////////////////*/
 
   function test_withdrawAndSupply_USTB_beforeMigration() public {
     _withdrawAndSupplyBack(AaveV3EthereumHorizonAssets.USTB_UNDERLYING, ustbAToken, USTB_SUPPLIER);
@@ -111,63 +119,64 @@ contract SuperstateAllowlistV42Migration is Test {
     _withdrawAndSupplyBack(AaveV3EthereumHorizonAssets.USCC_UNDERLYING, usccAToken, USCC_SUPPLIER);
   }
 
+  /*//////////////////////////////////////////////////////////////
+                              LIQUIDATION
+  //////////////////////////////////////////////////////////////*/
+
   function test_liquidation_USTB_beforeMigration() public {
-    _liquidateUstbCollateral();
+    _liquidate(AaveV3EthereumHorizonAssets.USTB_UNDERLYING, USTB_BORROWER, USTB_SUPPLIER);
   }
 
   function test_liquidation_USTB_afterMigration() public {
     _migrateAllowlists();
-    _liquidateUstbCollateral();
+    _liquidate(AaveV3EthereumHorizonAssets.USTB_UNDERLYING, USTB_BORROWER, USTB_SUPPLIER);
   }
 
-  /// @dev Negative control: without it the tests above could pass against an open allowlist.
-  function test_nonAllowlistedRecipientStillRejected() public {
+  function test_liquidation_USCC_beforeMigration() public {
+    _liquidate(AaveV3EthereumHorizonAssets.USCC_UNDERLYING, USCC_BORROWER, USCC_SUPPLIER);
+  }
+
+  function test_liquidation_USCC_afterMigration() public {
     _migrateAllowlists();
-
-    address stranger = makeAddr('stranger');
-    assertFalse(
-      IAllowlistV4_2(ALLOWLIST_V4_2).isAllowed(
-        stranger,
-        AaveV3EthereumHorizonAssets.USTB_UNDERLYING
-      ),
-      'stranger unexpectedly allowed'
-    );
-
-    uint256 amount = 1e6;
-    vm.prank(USTB_SUPPLIER);
-    POOL.withdraw(AaveV3EthereumHorizonAssets.USTB_UNDERLYING, amount, USTB_SUPPLIER);
-
-    vm.prank(USTB_SUPPLIER);
-    vm.expectRevert(InsufficientPermissions.selector);
-    IERC20(AaveV3EthereumHorizonAssets.USTB_UNDERLYING).transfer(stranger, amount);
+    _liquidate(AaveV3EthereumHorizonAssets.USCC_UNDERLYING, USCC_BORROWER, USCC_SUPPLIER);
   }
 
-  /// @dev Same control on the inbound leg, where the non-allowlisted account is the source.
-  function test_nonAllowlistedSupplierStillRejected() public {
+  /*//////////////////////////////////////////////////////////////
+                           NEGATIVE CONTROLS
+  //////////////////////////////////////////////////////////////*/
+
+  function test_nonAllowlistedRecipientRejected_USTB() public {
     _migrateAllowlists();
-
-    address stranger = makeAddr('stranger');
-    deal(AaveV3EthereumHorizonAssets.USTB_UNDERLYING, stranger, 1e6);
-
-    vm.startPrank(stranger);
-    IERC20(AaveV3EthereumHorizonAssets.USTB_UNDERLYING).approve(address(POOL), 1e6);
-    vm.expectRevert(InsufficientPermissions.selector);
-    POOL.supply(AaveV3EthereumHorizonAssets.USTB_UNDERLYING, 1e6, stranger, 0);
-    vm.stopPrank();
+    _assertRecipientRejected(AaveV3EthereumHorizonAssets.USTB_UNDERLYING, USTB_SUPPLIER);
   }
+
+  function test_nonAllowlistedRecipientRejected_USCC() public {
+    _migrateAllowlists();
+    _assertRecipientRejected(AaveV3EthereumHorizonAssets.USCC_UNDERLYING, USCC_SUPPLIER);
+  }
+
+  function test_nonAllowlistedSupplierRejected_USTB() public {
+    _migrateAllowlists();
+    _assertSupplierRejected(AaveV3EthereumHorizonAssets.USTB_UNDERLYING);
+  }
+
+  function test_nonAllowlistedSupplierRejected_USCC() public {
+    _migrateAllowlists();
+    _assertSupplierRejected(AaveV3EthereumHorizonAssets.USCC_UNDERLYING);
+  }
+
+  /*//////////////////////////////////////////////////////////////
+                                HELPERS
+  //////////////////////////////////////////////////////////////*/
 
   /// @dev The issuer side of the switch. No token upgrade is needed, only the pointer.
   function _migrateAllowlists() internal {
     _setAllowlist(AaveV3EthereumHorizonAssets.USTB_UNDERLYING);
     _setAllowlist(AaveV3EthereumHorizonAssets.USCC_UNDERLYING);
-
-    console.log('Allowlist V4.2 version: %s', IAllowlistV4_2(ALLOWLIST_V4_2).VERSION());
   }
 
   function _setAllowlist(address token) internal {
-    address tokenOwner = ISuperstateToken(token).owner();
-
-    vm.prank(tokenOwner);
+    vm.prank(ISuperstateToken(token).owner());
     ISuperstateToken(token).setAllowlist(ALLOWLIST_V4_2);
 
     assertEq(ISuperstateToken(token).allowlist(), ALLOWLIST_V4_2, 'allowlist not repointed');
@@ -213,52 +222,74 @@ contract SuperstateAllowlistV42Migration is Test {
   /**
    * @dev The only Horizon path that sends the RWA to a third party, so the liquidator has to be
    *      allowlisted. `receiveAToken = true` is not covered: RwaAToken reverts transferOnLiquidation.
+   * @param collateral the borrower's only collateral, so its price alone drives the health factor
+   * @param liquidator an existing supplier, allowlisted for `collateral` without us permitting it
    */
-  function _liquidateUstbCollateral() internal {
-    address liquidator = USTB_SUPPLIER;
+  function _liquidate(address collateral, address borrower, address liquidator) internal {
     address debtAsset = AaveV3EthereumHorizonAssets.RLUSD_UNDERLYING;
 
-    // Shallow drop on purpose: keeps the close factor at 50% so the liquidation leaves collateral
-    // and debt above the dust threshold.
-    uint256 price = ORACLE.getAssetPrice(AaveV3EthereumHorizonAssets.USTB_UNDERLYING);
+    (, , , , , uint256 healthFactorBefore) = POOL.getUserAccountData(borrower);
+    uint256 price = ORACLE.getAssetPrice(collateral);
     vm.mockCall(
       address(ORACLE),
-      abi.encodeWithSelector(
-        IPriceOracleGetter.getAssetPrice.selector,
-        AaveV3EthereumHorizonAssets.USTB_UNDERLYING
-      ),
-      abi.encode((price * 96) / 100)
+      abi.encodeWithSelector(IPriceOracleGetter.getAssetPrice.selector, collateral),
+      abi.encode((price * TARGET_HEALTH_FACTOR) / healthFactorBefore)
     );
 
-    (, , , , , uint256 healthFactor) = POOL.getUserAccountData(USTB_BORROWER);
+    (, , , , , uint256 healthFactor) = POOL.getUserAccountData(borrower);
     assertLt(healthFactor, 1e18, 'borrower not liquidatable');
     assertGt(healthFactor, 0.95e18, 'close factor is not 50%');
 
     // RLUSD is not permissioned, so funding the liquidator grants no RWA permission.
-    uint256 borrowerDebt = IERC20(POOL.getReserveVariableDebtToken(debtAsset)).balanceOf(
-      USTB_BORROWER
-    );
+    uint256 borrowerDebt = IERC20(POOL.getReserveVariableDebtToken(debtAsset)).balanceOf(borrower);
     deal(debtAsset, liquidator, borrowerDebt);
 
-    uint256 collateralBefore = IERC20(AaveV3EthereumHorizonAssets.USTB_UNDERLYING).balanceOf(
-      liquidator
-    );
+    uint256 collateralBefore = IERC20(collateral).balanceOf(liquidator);
 
     vm.startPrank(liquidator);
     IERC20(debtAsset).approve(address(POOL), type(uint256).max);
     POOL.liquidationCall({
-      collateralAsset: AaveV3EthereumHorizonAssets.USTB_UNDERLYING,
+      collateralAsset: collateral,
       debtAsset: debtAsset,
-      borrower: USTB_BORROWER,
+      borrower: borrower,
       debtToCover: type(uint256).max,
       receiveAToken: false
     });
     vm.stopPrank();
 
     assertGt(
-      IERC20(AaveV3EthereumHorizonAssets.USTB_UNDERLYING).balanceOf(liquidator),
+      IERC20(collateral).balanceOf(liquidator),
       collateralBefore,
-      'liquidator did not receive USTB'
+      'liquidator did not receive collateral'
     );
+  }
+
+  /// @dev Negative control: without it the tests above could pass against an open allowlist.
+  function _assertRecipientRejected(address underlying, address supplier) internal {
+    address stranger = makeAddr('stranger');
+    assertFalse(
+      IAllowlistV4_2(ALLOWLIST_V4_2).isAllowed(stranger, underlying),
+      'stranger unexpectedly allowed'
+    );
+
+    uint256 amount = 1e6;
+    vm.prank(supplier);
+    POOL.withdraw(underlying, amount, supplier);
+
+    vm.prank(supplier);
+    vm.expectRevert(InsufficientPermissions.selector);
+    IERC20(underlying).transfer(stranger, amount);
+  }
+
+  /// @dev Same control on the inbound leg, where the non-allowlisted account is the source.
+  function _assertSupplierRejected(address underlying) internal {
+    address stranger = makeAddr('stranger');
+    deal(underlying, stranger, 1e6);
+
+    vm.startPrank(stranger);
+    IERC20(underlying).approve(address(POOL), 1e6);
+    vm.expectRevert(InsufficientPermissions.selector);
+    POOL.supply(underlying, 1e6, stranger, 0);
+    vm.stopPrank();
   }
 }
