@@ -1,0 +1,21 @@
+.github/workflows/test.yml
+  s_6bcc2e2c1be3b4::t_4d577ab8d7747c 13-15
+.github/workflows/comment.yml
+  s_6bcc2e2c1be3b4::t_89fdae502b698c 9-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "1b8276b1b8f67d29a624c368f44f9f1177719211",
+  "prompts": {},
+  "sessions": {
+    "s_6bcc2e2c1be3b4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d72f53f0-4b10-4d39-b0af-4e7420ce1725",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}
