@@ -1,0 +1,19 @@
+src/AaveV3Horizon_RwaATokenAdmins_20260827/AaveV3Horizon_RwaATokenAdmins_20260827.t.sol
+  s_6bcc2e2c1be3b4::t_8a388d2338fe00 16-17,179-185
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ec6caec4eff65aed7ea309807fa9b0501b1f213f",
+  "prompts": {},
+  "sessions": {
+    "s_6bcc2e2c1be3b4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d72f53f0-4b10-4d39-b0af-4e7420ce1725",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}
