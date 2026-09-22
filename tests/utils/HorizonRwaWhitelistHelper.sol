@@ -10,7 +10,7 @@ import {AaveV3EthereumHorizonAssets} from 'aave-address-book-latest/AaveV3Ethere
 /**
  * @dev Helper for whitelisting E2E test actors on RWA compliance systems used
  *      by Horizon pool assets.  Each RWA issuer has its own compliance mechanism:
- *        - Superstate  (USTB, USCC) — AllowList.setEntityIdForAddress
+ *        - Superstate  (USTB, USCC) — AllowlistV3.setEntityIdForAddress, AllowlistV4_2.setAllowed
  *        - Centrifuge  (JTRSY, JAAA) — RestrictionManager.endorse
  *        - Circle/USYC             — RolesAuthority.setUserRole
  *        - Securitize  (VBILL, ACRED) — RegistryService.addWallet
@@ -21,7 +21,8 @@ import {AaveV3EthereumHorizonAssets} from 'aave-address-book-latest/AaveV3Ethere
  */
 abstract contract HorizonRwaWhitelistHelper is Test {
   // ── Superstate (USTB, USCC) ──────────────────────────────────────────
-  address internal constant SUPERSTATE_ALLOWLIST_V2 = 0x02f1fA8B196d21c7b733EB2700B825611d8A38E5;
+  address internal constant SUPERSTATE_ALLOWLIST_V3 = 0x02f1fA8B196d21c7b733EB2700B825611d8A38E5;
+  address internal constant SUPERSTATE_ALLOWLIST_V4_2 = 0xBcBC2b4FB2AbE1C598C9ea91E0b03338e4728D1f;
   uint256 internal constant SUPERSTATE_ROOT_ENTITY_ID = 1;
 
   // ── Centrifuge (JTRSY, JAAA) ─────────────────────────────────────────
@@ -102,14 +103,59 @@ abstract contract HorizonRwaWhitelistHelper is Test {
   // ─── Per-issuer helpers ──────────────────────────────────────────────
 
   function _whitelistSuperstateRwa(address addressToWhitelist) internal {
-    (bool success, bytes memory data) = SUPERSTATE_ALLOWLIST_V2.call(
+    _whitelistSuperstateToken(AaveV3EthereumHorizonAssets.USTB_UNDERLYING, addressToWhitelist);
+    _whitelistSuperstateToken(AaveV3EthereumHorizonAssets.USCC_UNDERLYING, addressToWhitelist);
+  }
+
+  /// @dev USTB and USCC read AllowlistV3 before 2026-09-22 and AllowlistV4_2 after, so whitelist on
+  ///      whichever one the token reads at the forked block.
+  function _whitelistSuperstateToken(address token, address addressToWhitelist) internal {
+    (bool success, bytes memory data) = token.staticcall(abi.encodeWithSignature('allowlist()'));
+    if (success && abi.decode(data, (address)) == SUPERSTATE_ALLOWLIST_V4_2) {
+      _whitelistSuperstateV4_2(token, addressToWhitelist);
+    } else {
+      _whitelistSuperstateV3(addressToWhitelist);
+    }
+  }
+
+  function _whitelistSuperstateV4_2(address token, address addressToWhitelist) internal {
+    if (_isSuperstateV4_2Allowed(token, addressToWhitelist)) return;
+
+    (bool success, bytes memory data) = SUPERSTATE_ALLOWLIST_V4_2.staticcall(
+      abi.encodeWithSignature('owner()')
+    );
+    require(success, 'Failed to call owner()');
+
+    vm.prank(abi.decode(data, (address)));
+    (success, ) = SUPERSTATE_ALLOWLIST_V4_2.call(
+      abi.encodeWithSignature('setAllowed(address,address,bool)', addressToWhitelist, token, true)
+    );
+    require(success, 'Failed to call setAllowed()');
+
+    // Verify whitelisted
+    require(
+      _isSuperstateV4_2Allowed(token, addressToWhitelist),
+      'Superstate: address not whitelisted'
+    );
+  }
+
+  function _isSuperstateV4_2Allowed(address token, address account) internal view returns (bool) {
+    (bool success, bytes memory data) = SUPERSTATE_ALLOWLIST_V4_2.staticcall(
+      abi.encodeWithSignature('isAllowed(address,address)', account, token)
+    );
+    require(success, 'Failed to call isAllowed()');
+    return abi.decode(data, (bool));
+  }
+
+  function _whitelistSuperstateV3(address addressToWhitelist) internal {
+    (bool success, bytes memory data) = SUPERSTATE_ALLOWLIST_V3.call(
       abi.encodeWithSignature('owner()')
     );
     require(success, 'Failed to call owner()');
     address owner = abi.decode(data, (address));
 
     vm.prank(owner);
-    (success, ) = SUPERSTATE_ALLOWLIST_V2.call(
+    (success, ) = SUPERSTATE_ALLOWLIST_V3.call(
       abi.encodeWithSignature(
         'setEntityIdForAddress(uint256,address)',
         SUPERSTATE_ROOT_ENTITY_ID,
@@ -118,7 +164,7 @@ abstract contract HorizonRwaWhitelistHelper is Test {
     );
 
     // Verify whitelisted
-    (success, data) = SUPERSTATE_ALLOWLIST_V2.call(
+    (success, data) = SUPERSTATE_ALLOWLIST_V3.call(
       abi.encodeWithSignature('addressEntityIds(address)', addressToWhitelist)
     );
     require(success && abi.decode(data, (uint256)) != 0, 'Superstate: address not whitelisted');
