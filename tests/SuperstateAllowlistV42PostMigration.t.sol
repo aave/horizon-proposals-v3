@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import {Test} from 'forge-std/Test.sol';
 import {IERC20} from 'aave-v3-origin/contracts/dependencies/openzeppelin/contracts/IERC20.sol';
 import {IPool} from 'aave-v3-origin/contracts/interfaces/IPool.sol';
+import {IScaledBalanceToken} from 'aave-v3-origin/contracts/interfaces/IScaledBalanceToken.sol';
 import {IAaveOracle} from 'aave-v3-origin/contracts/interfaces/IAaveOracle.sol';
 import {IPriceOracleGetter} from 'aave-v3-origin/contracts/interfaces/IPriceOracleGetter.sol';
 import {AaveV3EthereumHorizon, AaveV3EthereumHorizonAssets} from 'aave-address-book-latest/AaveV3EthereumHorizon.sol';
@@ -115,6 +116,38 @@ contract SuperstateAllowlistV42PostMigration is Test {
     });
   }
 
+  /// @dev Holder lists come from scripts/superstate-allowlist-holders.ts at FORK_BLOCK.
+  function test_noHolderLockedOut_USTB() public {
+    address[] memory holders = new address[](10);
+    holders[0] = 0x16e47d275198ED65916a560bAB4Af6330c36Ae09;
+    holders[1] = 0x27C09696061fFB6F186f4fC309b88f32EC19B6eD;
+    holders[2] = 0x34Ada44769bD057A5121cBd111e9d3e4E55cA10e;
+    holders[3] = 0x81286ac163aD542A9a9C9e4C42F181B003443A22;
+    holders[4] = 0xa0a6282a3ADBc3d6b76cd1129CD17607316dc2C1;
+    holders[5] = 0xb4370cf83BAE43BEb4539fA5882a128d0c772402;
+    holders[6] = 0xBa5d9CC840745AeeeEEDaC5712e32F13AB8ea352;
+    holders[7] = 0xC45f432f4002715C8Aae0B519e1135c882Cbb4f1;
+    holders[8] = 0xcf25feDB1A51edC27DBA47C87c28be1c983168Fb;
+    holders[9] = 0xFe9383C1F16E1F369B72681402685810B0a22a1D;
+    _assertNoHolderLockedOut(AaveV3EthereumHorizonAssets.USTB_UNDERLYING, ustbAToken, holders);
+  }
+
+  function test_noHolderLockedOut_USCC() public {
+    address[] memory holders = new address[](11);
+    holders[0] = 0x3DcBf20aedDBa3f5c94FD55f75570710b4A60E2d;
+    holders[1] = 0x55Fa9aAc40Af97FAaB697cc74d4dA452abf0272c;
+    holders[2] = 0x64471d103A7f77262529383D53Bdd28b260B1aE8;
+    holders[3] = 0x6475A5fD4c8B8387Df30c199339e510888E0374D;
+    holders[4] = 0x80559941C1A741bC435cb6782b6F161d5772ac4B;
+    holders[5] = 0x971B34b997843b82051b3e781d6A6d5A21BbDDA0;
+    holders[6] = 0xa846D192Bdc1c16681bc726CA7b28E0be199cE92;
+    holders[7] = 0xBA474Ab1642101968633525FB117fA12C5BCB4E6;
+    holders[8] = 0xc242DEEF9E4dBdF394fE425630F9aa5762dB2faC;
+    holders[9] = 0xd8383Ef64F49f7Bb16c60411080239863D9a823b;
+    holders[10] = 0xeD8CF2891d7bd5B01a8eE5B702b73b39B1967968;
+    _assertNoHolderLockedOut(AaveV3EthereumHorizonAssets.USCC_UNDERLYING, usccAToken, holders);
+  }
+
   function test_nonAllowlistedRecipientRejected_USTB() public {
     _assertRecipientRejected(AaveV3EthereumHorizonAssets.USTB_UNDERLYING, USTB_SUPPLIER);
   }
@@ -211,6 +244,39 @@ contract SuperstateAllowlistV42PostMigration is Test {
       collateralBefore,
       'liquidator did not receive collateral'
     );
+  }
+
+  /**
+   * @dev The scaled balances must add up to the scaled total supply exactly, so the list cannot miss
+   *      a holder. Each holder then withdraws 1 unit, which only succeeds if the token lets the
+   *      aToken send the underlying to that holder.
+   */
+  function _assertNoHolderLockedOut(
+    address underlying,
+    address aToken,
+    address[] memory holders
+  ) internal {
+    uint256 scaledSum;
+    for (uint256 i; i < holders.length; ++i) {
+      scaledSum += IScaledBalanceToken(aToken).scaledBalanceOf(holders[i]);
+    }
+    assertEq(scaledSum, IScaledBalanceToken(aToken).scaledTotalSupply(), 'holder list incomplete');
+
+    for (uint256 i; i < holders.length; ++i) {
+      assertTrue(
+        IAllowlistV4_2(ALLOWLIST_V4_2).isAllowed(holders[i], underlying),
+        'holder not allowed'
+      );
+
+      uint256 underlyingBefore = IERC20(underlying).balanceOf(holders[i]);
+      vm.prank(holders[i]);
+      POOL.withdraw(underlying, 1, holders[i]);
+      assertEq(
+        IERC20(underlying).balanceOf(holders[i]),
+        underlyingBefore + 1,
+        'holder could not withdraw'
+      );
+    }
   }
 
   /// @dev Negative control: without it the tests above could pass against an open allowlist.
