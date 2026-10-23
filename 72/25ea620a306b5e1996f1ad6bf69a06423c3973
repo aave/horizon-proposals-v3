@@ -1,0 +1,24 @@
+src/utils/AaveV3EthereumHorizonCustom.sol
+  s_2bc10e7d26489f::t_6e938b62e29288 28
+tests/AaveV3Horizon_ConfigEngine.t.sol
+  s_2bc10e7d26489f::t_0ccb79625694d5 99
+  s_2bc10e7d26489f::t_11ba214054d061 86-87
+lib/aave-address-book
+  s_2bc10e7d26489f::t_d57b9c86bc90e0 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7225ea620a306b5e1996f1ad6bf69a06423c3973",
+  "prompts": {},
+  "sessions": {
+    "s_2bc10e7d26489f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c17fbce8-c529-4890-a816-221a667180e8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}
