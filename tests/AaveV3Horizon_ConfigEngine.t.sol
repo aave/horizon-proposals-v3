@@ -83,6 +83,8 @@ contract AaveV3Horizon_ConfigEngine_Test is ProtocolV3HorizonTestBase {
   address internal constant DEPLOYED_CONFIG_ENGINE = 0xFB36A571995C04E6FcbC7611450E805c79535174;
   // https://etherscan.io/address/0x464C71f6c2F760DdA6093dCB91C24c39e5d6e18c
   address internal constant DAO_COLLECTOR = 0x464C71f6c2F760DdA6093dCB91C24c39e5d6e18c;
+  // https://etherscan.io/address/0x5148d810B1DaE509d68f9d9219AD1d004EA32545
+  address internal constant RWA_A_TOKEN_INSTANCE = 0x5148d810B1DaE509d68f9d9219AD1d004EA32545;
 
   IEngine internal configEngine;
 
@@ -94,6 +96,7 @@ contract AaveV3Horizon_ConfigEngine_Test is ProtocolV3HorizonTestBase {
   function test_configEngine_address() public pure {
     assertEq(AaveV3EthereumHorizonCustom.CONFIG_ENGINE, DEPLOYED_CONFIG_ENGINE);
     assertEq(address(AaveV3EthereumHorizon.COLLECTOR), DAO_COLLECTOR);
+    assertEq(AaveV3EthereumHorizonCustom.RWA_A_TOKEN_IMPL, RWA_A_TOKEN_INSTANCE);
   }
 
   function test_configEngine_constants() public view {
