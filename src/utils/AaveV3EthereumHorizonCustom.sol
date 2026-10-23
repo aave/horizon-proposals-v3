@@ -56,4 +56,14 @@ library AaveV3EthereumHorizonCustom {
   address public constant MGLOBAL_UNDERLYING = 0x7433806912Eae67919e66aea853d46Fa0aef98A8;
   // https://etherscan.io/address/0xe034De753a3d855B6daD1A4984de75a5c443E939
   address public constant MGLOBAL_PRICE_FEED = 0xe034De753a3d855B6daD1A4984de75a5c443E939;
+
+  // https://etherscan.io/address/0x4E72025984424E52838cf8953E2863eFf036B67A
+  address public constant MWIN_UNDERLYING = 0x4E72025984424E52838cf8953E2863eFf036B67A;
+  // https://etherscan.io/address/0x31E18898399A419Aa20A18eC8fc49Cc39B77CdE8
+  address public constant MWIN_PRICE_FEED = 0x31E18898399A419Aa20A18eC8fc49Cc39B77CdE8;
+
+  // https://etherscan.io/address/0x015C477A4E2881C4B3bB8999f59ee4A04e812344
+  address public constant HINC_UNDERLYING = 0x015C477A4E2881C4B3bB8999f59ee4A04e812344;
+  // https://etherscan.io/address/0x6b447A72D8243E96F5782ad6BdffD2dc813bb82E
+  address public constant HINC_PRICE_FEED = 0x6b447A72D8243E96F5782ad6BdffD2dc813bb82E;
 }
