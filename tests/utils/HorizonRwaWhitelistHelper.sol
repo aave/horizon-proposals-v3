@@ -13,7 +13,8 @@ import {AaveV3EthereumHorizonAssets} from 'aave-address-book-latest/AaveV3Ethere
  *        - Superstate  (USTB, USCC) — AllowList.setEntityIdForAddress
  *        - Centrifuge  (JTRSY, JAAA) — RestrictionManager.endorse
  *        - Circle/USYC             — RolesAuthority.setUserRole
- *        - Securitize  (VBILL, ACRED, HINC) — RegistryService.addWallet
+ *        - Securitize  (VBILL, ACRED, HINC) — RegistryService.addWallet;
+ *                      HINC aToken — WalletManager.addPlatformWallet
  *        - Midas       (mGLOBAL, mWIN) — MidasAccessControl GREENLISTED_ROLE
  *
  *      Override `_whitelistRwaActors` in concrete tests to add whitelisting for
@@ -106,9 +107,15 @@ abstract contract HorizonRwaWhitelistHelper is Test {
     // Midas (mWIN) — only if listed (aToken exists)
     address mwinAToken = pool.getReserveAToken(AaveV3EthereumHorizonCustom.MWIN_UNDERLYING);
     if (mwinAToken != address(0)) _whitelistMwinRwa(mwinAToken);
-    // Securitize (HINC) — only if listed (aToken exists)
+    // Securitize (HINC) — only if listed (aToken exists), as a platform wallet like aVBILL
     address hincAToken = pool.getReserveAToken(AaveV3EthereumHorizonCustom.HINC_UNDERLYING);
-    if (hincAToken != address(0)) _whitelistHincRwa(hincAToken);
+    if (hincAToken != address(0)) {
+      _whitelistSecuritizePlatformWallet(
+        AaveV3EthereumHorizonCustom.HINC_UNDERLYING,
+        SECURITIZE_ADMIN,
+        hincAToken
+      );
+    }
   }
 
   function _requireAToken(IPool pool, address underlying) internal view returns (address aToken) {
@@ -280,6 +287,60 @@ abstract contract HorizonRwaWhitelistHelper is Test {
         _passesSecuritizeCompliance(token, addressToWhitelist),
       'Securitize: not whitelisted'
     );
+  }
+
+  /**
+   * @dev Securitize platform wallet registration via WalletManager.addPlatformWallet, matching how
+   *      Securitize registers Horizon aTokens on mainnet (aVBILL is a platform wallet). A platform
+   *      wallet holds the token for many investors and is not tied to an investor ID.
+   */
+  function _whitelistSecuritizePlatformWallet(
+    address token,
+    address admin,
+    address wallet
+  ) internal {
+    (bool success, bytes memory data) = token.call(abi.encodeWithSignature('WALLET_MANAGER()'));
+    require(success, 'Failed to call WALLET_MANAGER()');
+    (success, data) = token.call(
+      abi.encodeWithSignature('getDSService(uint256)', abi.decode(data, (uint256)))
+    );
+    require(success, 'Failed to call getDSService() for wallet manager');
+    address walletManager = abi.decode(data, (address));
+
+    // Already registered (e.g. on mainnet after listing): re-adding reverts on a set wallet type
+    if (_isSecuritizePlatformWallet(walletManager, wallet)) return;
+
+    // Ensure admin has the issuer role on the trust service (role mapping at slot 1)
+    (success, data) = token.call(abi.encodeWithSignature('TRUST_SERVICE()'));
+    require(success, 'Failed to call TRUST_SERVICE()');
+    (success, data) = token.call(
+      abi.encodeWithSignature('getDSService(uint256)', abi.decode(data, (uint256)))
+    );
+    require(success, 'Failed to call getDSService() for trust');
+    address trustService = abi.decode(data, (address));
+    bytes32 roleSlot = keccak256(abi.encode(admin, uint256(1)));
+    vm.store(trustService, roleSlot, bytes32(uint256(2)));
+
+    vm.prank(admin);
+    (success, ) = walletManager.call(abi.encodeWithSignature('addPlatformWallet(address)', wallet));
+    require(success, 'Failed to call addPlatformWallet()');
+
+    // Verify registered as a platform wallet
+    require(
+      _isSecuritizePlatformWallet(walletManager, wallet),
+      'Securitize: not a platform wallet'
+    );
+  }
+
+  /// @dev Returns true if `wallet` is registered as a platform wallet.
+  function _isSecuritizePlatformWallet(
+    address walletManager,
+    address wallet
+  ) internal returns (bool) {
+    (bool success, bytes memory data) = walletManager.call(
+      abi.encodeWithSignature('isPlatformWallet(address)', wallet)
+    );
+    return success && abi.decode(data, (bool));
   }
 
   /// @dev Returns true if `addr` is whitelisted as a regular wallet.
