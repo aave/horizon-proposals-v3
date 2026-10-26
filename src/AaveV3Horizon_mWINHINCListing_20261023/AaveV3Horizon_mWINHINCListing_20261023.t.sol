@@ -6,7 +6,7 @@ import {IERC20} from 'aave-v3-origin/contracts/dependencies/openzeppelin/contrac
 import {IAToken} from 'aave-v3-origin/contracts/interfaces/IAToken.sol';
 import {IDefaultInterestRateStrategyV2} from 'aave-v3-origin/contracts/interfaces/IDefaultInterestRateStrategyV2.sol';
 import {IRwaOracleParameterRegistry} from 'src/interfaces/IRwaOracleParameterRegistry.sol';
-import {ProtocolV3HorizonTestBase} from 'tests/utils/ProtocolV3HorizonTestBase.sol';
+import {ProtocolV3HorizonTestBase, ReserveConfig} from 'tests/utils/ProtocolV3HorizonTestBase.sol';
 import {AaveV3Horizon_mWINHINCListing_20261023} from 'src/AaveV3Horizon_mWINHINCListing_20261023/AaveV3Horizon_mWINHINCListing_20261023.sol';
 import {AaveV3EthereumHorizonCustom} from 'src/utils/AaveV3EthereumHorizonCustom.sol';
 import {AaveV3EthereumHorizon, AaveV3EthereumHorizonAssets} from 'aave-address-book-latest/AaveV3EthereumHorizon.sol';
@@ -181,7 +181,7 @@ contract AaveV3Horizon_mWINHINCListing_20261023_Test is
    * @dev mWIN reverts any transfer leaving a non-exempt holder with a non-zero balance below
    *      1 mWIN. With the aToken greenlisted and exempt, a greenlisted user that is not exempt
    *      can only withdraw to a wallet balance of 0 or at least 1 mWIN. The same constraint
-   *      applies to liquidators receiving seized mWIN.
+   *      applies to liquidators receiving seized mWIN, see test_mwinMinBalanceLiquidation.
    */
   function test_mwinMinBalance() public {
     IPool pool = _pool();
@@ -203,6 +203,61 @@ contract AaveV3Horizon_mWINHINCListing_20261023_Test is
     pool.withdraw(mWin, 1e18, user);
     assertEq(IERC20(mWin).balanceOf(user), 1e18);
     vm.stopPrank();
+  }
+
+  /**
+   * @dev A partial liquidation seizing less than 1 mWIN reverts for a greenlisted liquidator that
+   *      is not exempt from the 1-mWIN minimum, and succeeds for one holding
+   *      M_WIN_MIN_BALANCE_EXEMPT_ROLE. Liquidators therefore need that exemption from Midas.
+   */
+  function test_mwinMinBalanceLiquidation() public {
+    IPool pool = _pool();
+    _executeHorizonPayload(address(proposal));
+
+    address mWin = AaveV3EthereumHorizonCustom.MWIN_UNDERLYING;
+    address gho = AaveV3EthereumHorizonAssets.GHO_UNDERLYING;
+    _whitelistMwinRwa(pool.getReserveAToken(mWin));
+
+    // borrower supplies 2 mWIN (~$262k) and borrows 150k GHO in default mode (67% LTV, 72% LT)
+    address borrower = makeAddr('mwinBorrower');
+    _grantMidasRole(MWIN_GREENLISTED_ROLE, borrower);
+    deal(mWin, borrower, 2e18);
+    vm.startPrank(borrower);
+    IERC20(mWin).approve(address(pool), 2e18);
+    pool.supply(mWin, 2e18, borrower, 0);
+    pool.borrow(gho, 150_000e18, 2, 0, borrower);
+    vm.stopPrank();
+
+    // a 30% mWIN price drop puts the position below the liquidation threshold
+    ReserveConfig memory mwinConfig;
+    mwinConfig.underlying = mWin;
+    _changeAssetPrice(pool, mwinConfig, 70_00);
+    (, , , , , uint256 healthFactor) = pool.getUserAccountData(borrower);
+    assertLt(healthFactor, 1e18, 'borrower not liquidatable');
+
+    // covering 50k GHO seizes ~0.59 mWIN (50k * 1.08 bonus / ~$91.9k)
+    uint256 debtToCover = 50_000e18;
+    address liquidator = makeAddr('mwinLiquidator');
+    address exemptLiquidator = makeAddr('mwinExemptLiquidator');
+    _grantMidasRole(MWIN_GREENLISTED_ROLE, liquidator);
+    _whitelistMwinRwa(exemptLiquidator);
+
+    deal(gho, liquidator, debtToCover);
+    vm.startPrank(liquidator);
+    IERC20(gho).approve(address(pool), debtToCover);
+    vm.expectRevert(bytes('MTMB: min balance not met'));
+    pool.liquidationCall(mWin, gho, borrower, debtToCover, false);
+    vm.stopPrank();
+
+    deal(gho, exemptLiquidator, debtToCover);
+    vm.startPrank(exemptLiquidator);
+    IERC20(gho).approve(address(pool), debtToCover);
+    pool.liquidationCall(mWin, gho, borrower, debtToCover, false);
+    vm.stopPrank();
+
+    uint256 seized = IERC20(mWin).balanceOf(exemptLiquidator);
+    assertGt(seized, 0, 'no mWIN seized');
+    assertLt(seized, 1e18, 'seized at least 1 mWIN');
   }
 
   /**
