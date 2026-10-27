@@ -25,6 +25,7 @@ library AaveV3EthereumHorizonCustom {
     address(AaveV3EthereumHorizon.DEFAULT_A_TOKEN_IMPL);
   address internal constant DEFAULT_VARIABLE_DEBT_TOKEN_IMPL =
     address(AaveV3EthereumHorizon.DEFAULT_VARIABLE_DEBT_TOKEN_IMPL);
+  address internal constant RWA_A_TOKEN_IMPL = AaveV3EthereumHorizon.RWA_A_TOKEN_IMPL;
   address internal constant CONFIG_ENGINE = AaveV3EthereumHorizon.CONFIG_ENGINE;
 
   // executor roles
@@ -36,8 +37,6 @@ library AaveV3EthereumHorizonCustom {
   address public constant HORIZON_EXECUTOR = 0x09e8E1408a68778CEDdC1938729Ea126710E7Dda;
 
   // horizon deployments
-  // https://etherscan.io/address/0x5148d810B1DaE509d68f9d9219AD1d004EA32545
-  address internal constant RWA_A_TOKEN_IMPL = 0x5148d810B1DaE509d68f9d9219AD1d004EA32545;
   // https://etherscan.io/address/0x87593272C06f4FC49EC2942eBda0972d2F1Ab521
   address internal constant DEFAULT_INTEREST_RATE_STRATEGY =
     0x87593272C06f4FC49EC2942eBda0972d2F1Ab521;
