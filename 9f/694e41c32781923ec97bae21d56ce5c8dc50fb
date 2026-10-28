@@ -1,0 +1,27 @@
+tests/HorizonRwaWhitelistHelper.t.sol
+  s_2bc10e7d26489f::t_5defcf40269868 9-10,38
+  s_2bc10e7d26489f::t_b074c5c84135a9 15,19-20,24,26-27,30-31
+tests/utils/HorizonRwaWhitelistHelper.sol
+  s_2bc10e7d26489f::t_5defcf40269868 13,110-114
+.github/workflows/test.yml
+  s_2bc10e7d26489f::t_8bc710c6b7a795 45-49,54
+tests/utils/HorizonConfigAssertionHelper.sol
+  s_2bc10e7d26489f::t_8bc710c6b7a795 10,147-150
+  s_2bc10e7d26489f::t_da62847bdc5a31 151
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9f694e41c32781923ec97bae21d56ce5c8dc50fb",
+  "prompts": {},
+  "sessions": {
+    "s_2bc10e7d26489f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c17fbce8-c529-4890-a816-221a667180e8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}
