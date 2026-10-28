@@ -116,10 +116,17 @@ abstract contract HorizonRwaWhitelistHelper is Test {
     } else {
       _whitelistSuperstateV3(addressToWhitelist);
     }
+
+    (success, data) = token.staticcall(
+      abi.encodeWithSignature('isAllowed(address)', addressToWhitelist)
+    );
+    require(success && abi.decode(data, (bool)), 'Superstate: token does not allow account');
   }
 
   function _whitelistSuperstateV4_2(address token, address addressToWhitelist) internal {
-    if (_isSuperstateV4_2Allowed(token, addressToWhitelist)) return;
+    if (_isSuperstateV4_2Allowed(token, addressToWhitelist)) {
+      return;
+    }
 
     (bool success, bytes memory data) = SUPERSTATE_ALLOWLIST_V4_2.staticcall(
       abi.encodeWithSignature('owner()')
