@@ -15,7 +15,8 @@ import {AaveV3EthereumHorizonAssets} from 'aave-address-book-latest/AaveV3Ethere
  *        - Circle/USYC             — RolesAuthority.setUserRole
  *        - Securitize  (VBILL, ACRED, HINC) — RegistryService.addWallet;
  *                      HINC aToken — WalletManager.addPlatformWallet
- *        - Midas       (mGLOBAL, mWIN) — MidasAccessControl GREENLISTED_ROLE
+ *        - Midas       (mGLOBAL, mWIN) — MidasAccessControl GREENLISTED_ROLE, plus the mWIN min
+ *                      balance exemption
  *
  *      Override `_whitelistRwaActors` in concrete tests to add whitelisting for
  *      newly listed assets.
@@ -79,8 +80,9 @@ abstract contract HorizonRwaWhitelistHelper is Test {
       _whitelistAcredRwa(actors[i]);
       // Midas (mGLOBAL)
       _whitelistMidasRwa(actors[i]);
-      // Midas (mWIN)
+      // Midas (mWIN), exempt from the 1-mWIN minimum so that E2E amounts below 1 mWIN can move
       _whitelistMwinRwa(actors[i]);
+      _exemptMwinMinBalance(actors[i]);
       // Securitize (HINC)
       _whitelistHincRwa(actors[i]);
     }
@@ -103,9 +105,12 @@ abstract contract HorizonRwaWhitelistHelper is Test {
     _whitelistAcredRwa(_requireAToken(pool, AaveV3EthereumHorizonCustom.ACRED_UNDERLYING));
     // Midas (mGLOBAL)
     _whitelistMidasRwa(_requireAToken(pool, AaveV3EthereumHorizonCustom.MGLOBAL_UNDERLYING));
-    // Midas (mWIN) — only if listed (aToken exists)
+    // Midas (mWIN) — only if listed (aToken exists), exempt from the 1-mWIN minimum
     address mwinAToken = pool.getReserveAToken(AaveV3EthereumHorizonCustom.MWIN_UNDERLYING);
-    if (mwinAToken != address(0)) _whitelistMwinRwa(mwinAToken);
+    if (mwinAToken != address(0)) {
+      _whitelistMwinRwa(mwinAToken);
+      _exemptMwinMinBalance(mwinAToken);
+    }
     // Securitize (HINC) — only if listed (aToken exists), as a platform wallet like aVBILL
     address hincAToken = pool.getReserveAToken(AaveV3EthereumHorizonCustom.HINC_UNDERLYING);
     if (hincAToken != address(0)) {
@@ -253,11 +258,14 @@ abstract contract HorizonRwaWhitelistHelper is Test {
     _grantMidasRole(MGLOBAL_GREENLISTED_ROLE, addressToWhitelist);
   }
 
-  /// @dev Midas whitelisting: grants mWIN's greenlist role and its min balance exemption, so that
-  ///      E2E amounts below 1 mWIN can move.
+  /// @dev Midas whitelisting: grants mWIN's greenlist role.
   function _whitelistMwinRwa(address addressToWhitelist) internal {
     _grantMidasRole(MWIN_GREENLISTED_ROLE, addressToWhitelist);
-    _grantMidasRole(MWIN_MIN_BALANCE_EXEMPT_ROLE, addressToWhitelist);
+  }
+
+  /// @dev Exempts `account` from mWIN's 1-mWIN minimum balance.
+  function _exemptMwinMinBalance(address account) internal {
+    _grantMidasRole(MWIN_MIN_BALANCE_EXEMPT_ROLE, account);
   }
 
   function _grantMidasRole(bytes32 role, address account) internal {
