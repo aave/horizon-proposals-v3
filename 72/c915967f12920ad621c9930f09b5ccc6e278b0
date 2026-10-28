@@ -1,0 +1,21 @@
+src/AaveV3Horizon_mWINHINCListing_20261023/AaveV3Horizon_mWINHINCListing_20261023.t.sol
+  s_2bc10e7d26489f::t_ec2650044ed1f2 7,134-140,203,230,255,289,305,320,330,337,353,360-435,505-506,512,566-600
+tests/utils/HorizonRwaWhitelistHelper.sol
+  s_2bc10e7d26489f::t_a4ed84b0f9e9fd 18-19,83,85,108,110-113,261,264-268
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "72c915967f12920ad621c9930f09b5ccc6e278b0",
+  "prompts": {},
+  "sessions": {
+    "s_2bc10e7d26489f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c17fbce8-c529-4890-a816-221a667180e8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}
