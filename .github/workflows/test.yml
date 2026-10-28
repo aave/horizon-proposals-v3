@@ -42,17 +42,16 @@ jobs:
         with:
           ZKSYNC: "false"
 
+      - uses: tj-actions/changed-files@f79274f27befa7e1bf6d5eb1c4964c0f65cea226
+        id: shared
+        with:
+          files: tests/utils/**
+
       - name: Run Forge tests
         id: test
         uses: aave-dao/github-workflows/.github/actions/foundry-test@main
         with:
-          MODE: "CHANGED"
-          FOUNDRY_PROFILE: "test"
-
-      - name: Run Forge tests in tests/
-        id: test-standalone
-        run: forge test --match-path 'tests/**/*.t.sol' -vv
-        env:
+          MODE: ${{ steps.shared.outputs.any_changed == 'true' && 'ALL' || 'CHANGED' }}
           FOUNDRY_PROFILE: "test"
 
       - name: Create comment
