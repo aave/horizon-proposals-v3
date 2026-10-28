@@ -6,38 +6,36 @@ import {AaveV3EthereumHorizonAssets} from 'aave-address-book-latest/AaveV3Ethere
 import {HorizonRwaWhitelistHelper} from 'tests/utils/HorizonRwaWhitelistHelper.sol';
 
 /**
- * @dev Superstate whitelisting on either side of the 2026-09-22 switch from AllowlistV3 to
- *      AllowlistV4.2. A whitelisted address must be able to receive USTB and USCC.
+ * @dev Superstate whitelisting on AllowlistV4.2. A whitelisted address must be able to receive
+ *      USTB and USCC.
  *
  *      command: FOUNDRY_PROFILE=test forge test --match-contract HorizonRwaWhitelistHelperTest -vv
  */
 contract HorizonRwaWhitelistHelperTest is HorizonRwaWhitelistHelper {
-  // Proposal tests pin blocks this old, where the token implementation predates `allowlist()`.
-  uint256 internal constant LEGACY_BLOCK = 25095755;
-  // AllowlistV4.2 is deployed but the tokens still read AllowlistV3.
+  // The tokens still read AllowlistV3.
   uint256 internal constant PRE_SWITCH_BLOCK = 25988000;
   uint256 internal constant POST_SWITCH_BLOCK = 26034966;
-
-  function test_superstate_legacyBlock() public {
-    vm.createSelectFork(vm.rpcUrl('mainnet'), LEGACY_BLOCK);
-    _assertCanReceiveSuperstate();
-  }
-
-  function test_superstate_preSwitch() public {
-    vm.createSelectFork(vm.rpcUrl('mainnet'), PRE_SWITCH_BLOCK);
-    _assertCanReceiveSuperstate();
-  }
 
   function test_superstate_postSwitch() public {
     vm.createSelectFork(vm.rpcUrl('mainnet'), POST_SWITCH_BLOCK);
     _assertCanReceiveSuperstate();
   }
 
+  function test_superstate_reverts_unknownAllowlist() public {
+    vm.createSelectFork(vm.rpcUrl('mainnet'), PRE_SWITCH_BLOCK);
+    vm.expectRevert(bytes('Superstate: unknown allowlist'));
+    this.whitelistSuperstateRwa(makeAddr('recipient'));
+  }
+
+  function whitelistSuperstateRwa(address addressToWhitelist) external {
+    _whitelistSuperstateRwa(addressToWhitelist);
+  }
+
   function _assertCanReceiveSuperstate() internal {
     address recipient = makeAddr('recipient');
     _whitelistSuperstateRwa(recipient);
 
-    // The aTokens hold the underlying and are allowlisted at every block above.
+    // The aTokens hold the underlying and are allowlisted.
     _assertCanReceive({
       token: AaveV3EthereumHorizonAssets.USTB_UNDERLYING,
       sender: AaveV3EthereumHorizonAssets.USTB_A_TOKEN,

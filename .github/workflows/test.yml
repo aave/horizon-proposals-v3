@@ -46,13 +46,7 @@ jobs:
         id: test
         uses: aave-dao/github-workflows/.github/actions/foundry-test@main
         with:
-          MODE: "CHANGED"
-          FOUNDRY_PROFILE: "test"
-
-      - name: Run Forge tests in tests/
-        id: test-standalone
-        run: forge test --match-path 'tests/**/*.t.sol' -vv
-        env:
+          MODE: "ALL"
           FOUNDRY_PROFILE: "test"
 
       - name: Create comment
