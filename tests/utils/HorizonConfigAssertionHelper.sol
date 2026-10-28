@@ -7,6 +7,7 @@ import {AggregatorInterface} from 'aave-helpers/lib/aave-address-book/lib/aave-v
 import {IERC20} from 'aave-helpers/lib/aave-address-book/lib/aave-v3-origin/lib/forge-std/src/interfaces/IERC20.sol';
 import {IERC20Metadata} from 'aave-helpers/lib/aave-address-book/lib/aave-v3-origin/lib/solidity-utils/lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol';
 import {IPool} from 'aave-v3-origin/contracts/interfaces/IPool.sol';
+import {IAToken} from 'aave-v3-origin/contracts/interfaces/IAToken.sol';
 import {IAaveOracle} from 'aave-v3-origin/contracts/interfaces/IAaveOracle.sol';
 import {IPriceOracleGetter} from 'aave-v3-origin/contracts/interfaces/IPriceOracleGetter.sol';
 import {IACLManager} from 'aave-v3-origin/contracts/interfaces/IACLManager.sol';
@@ -142,6 +143,11 @@ abstract contract HorizonConfigAssertionHelper is Test {
       address(IncentivizedERC20(aToken).getIncentivesController()),
       AaveV3EthereumHorizon.DEFAULT_INCENTIVES_CONTROLLER,
       'aToken incentivesController'
+    );
+    assertEq(
+      IAToken(aToken).RESERVE_TREASURY_ADDRESS(),
+      address(AaveV3EthereumHorizon.COLLECTOR),
+      'aToken treasury'
     );
   }
 
