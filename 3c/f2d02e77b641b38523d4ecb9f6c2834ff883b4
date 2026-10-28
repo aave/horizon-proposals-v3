@@ -1,0 +1,19 @@
+src/AaveV3Horizon_mWINHINCListing_20261023/AaveV3Horizon_mWINHINCListing_20261023.t.sol
+  s_2bc10e7d26489f::t_059fbdad92090f 181-184,186-188,190-193,195-197,199-208,210-212,214-218,221-223,225-228,230-232,234-237,239-242,244-261,263-272,336-409
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3cf2d02e77b641b38523d4ecb9f6c2834ff883b4",
+  "prompts": {},
+  "sessions": {
+    "s_2bc10e7d26489f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c17fbce8-c529-4890-a816-221a667180e8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}
