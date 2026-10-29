@@ -14,7 +14,7 @@ import {AaveV3EthereumHorizonAssets} from 'aave-address-book-latest/AaveV3Ethere
  *        - Centrifuge  (JTRSY, JAAA) — RestrictionManager.endorse
  *        - Circle/USYC             — RolesAuthority.setUserRole
  *        - Securitize  (VBILL, ACRED, HINC) — RegistryService.addWallet;
- *                      HINC aToken — WalletManager.addPlatformWallet
+ *                      VBILL and HINC aTokens — WalletManager.addPlatformWallet
  *        - Midas       (mGLOBAL, mWIN) — MidasAccessControl GREENLISTED_ROLE, plus the mWIN min
  *                      balance exemption
  *
@@ -99,8 +99,12 @@ abstract contract HorizonRwaWhitelistHelper is Test {
     // Centrifuge (JTRSY, JAAA)
     _whitelistCentrifugeRwa(_requireAToken(pool, AaveV3EthereumHorizonAssets.JTRSY_UNDERLYING));
     _whitelistCentrifugeRwa(_requireAToken(pool, AaveV3EthereumHorizonAssets.JAAA_UNDERLYING));
-    // Securitize (VBILL)
-    _whitelistVbillRwa(_requireAToken(pool, AaveV3EthereumHorizonAssets.VBILL_UNDERLYING));
+    // Securitize (VBILL) — platform wallet, as on mainnet
+    _whitelistSecuritizePlatformWallet(
+      AaveV3EthereumHorizonAssets.VBILL_UNDERLYING,
+      SECURITIZE_ADMIN,
+      _requireAToken(pool, AaveV3EthereumHorizonAssets.VBILL_UNDERLYING)
+    );
     // Securitize (ACRED)
     _whitelistAcredRwa(_requireAToken(pool, AaveV3EthereumHorizonCustom.ACRED_UNDERLYING));
     // Midas (mGLOBAL)
@@ -111,7 +115,7 @@ abstract contract HorizonRwaWhitelistHelper is Test {
       _whitelistMwinRwa(mwinAToken);
       _exemptMwinMinBalance(mwinAToken);
     }
-    // Securitize (HINC) — only if listed (aToken exists), as a platform wallet like aVBILL
+    // Securitize (HINC) — only if listed (aToken exists), platform wallet like aVBILL
     address hincAToken = pool.getReserveAToken(AaveV3EthereumHorizonCustom.HINC_UNDERLYING);
     if (hincAToken != address(0)) {
       _whitelistSecuritizePlatformWallet(
