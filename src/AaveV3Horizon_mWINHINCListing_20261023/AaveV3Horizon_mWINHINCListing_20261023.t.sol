@@ -6,6 +6,7 @@ import {IERC20} from 'aave-v3-origin/contracts/dependencies/openzeppelin/contrac
 import {IAToken} from 'aave-v3-origin/contracts/interfaces/IAToken.sol';
 import {IDefaultInterestRateStrategyV2} from 'aave-v3-origin/contracts/interfaces/IDefaultInterestRateStrategyV2.sol';
 import {IRwaOracleParameterRegistry} from 'src/interfaces/IRwaOracleParameterRegistry.sol';
+import {IEACAggregatorProxy} from 'src/interfaces/IEACAggregatorProxy.sol';
 import {ProtocolV3HorizonTestBase, ReserveConfig} from 'tests/utils/ProtocolV3HorizonTestBase.sol';
 import {AaveV3Horizon_mWINHINCListing_20261023} from 'src/AaveV3Horizon_mWINHINCListing_20261023/AaveV3Horizon_mWINHINCListing_20261023.sol';
 import {AaveV3EthereumHorizonCustom} from 'src/utils/AaveV3EthereumHorizonCustom.sol';
@@ -15,12 +16,17 @@ import {AaveV3Ethereum} from 'aave-address-book-latest/AaveV3Ethereum.sol';
 abstract contract AaveV3Horizon_mWINHINCListing_20261023_TestBase is ProtocolV3HorizonTestBase {
   struct ExpectedLlamaGuardConfig {
     address underlying;
+    address aggregator;
     uint64 maxExpectedApy;
     uint32 upperBoundTolerance;
     uint32 lowerBoundTolerance;
     uint32 maxDiscount;
     uint80 lookbackWindowSize;
   }
+
+  // Chainlink's 4-of-9 Safe, which owns the mWIN and HINC feed proxies and their aggregators
+  // https://etherscan.io/address/0x21f73D42Eb58Ba49dDB685dc29D3bF5c0f0373CA
+  address internal constant CHAINLINK_FEED_OWNER = 0x21f73D42Eb58Ba49dDB685dc29D3bF5c0f0373CA;
 
   AaveV3Horizon_mWINHINCListing_20261023 internal proposal;
 
@@ -72,6 +78,8 @@ abstract contract AaveV3Horizon_mWINHINCListing_20261023_TestBase is ProtocolV3H
     });
     expectedMwinLlamaGuardConfig = ExpectedLlamaGuardConfig({
       underlying: AaveV3EthereumHorizonCustom.MWIN_UNDERLYING,
+      // https://etherscan.io/address/0xE1f4818E9b0139856404028eA99C491e1D28aF50
+      aggregator: 0xE1f4818E9b0139856404028eA99C491e1D28aF50,
       maxExpectedApy: 8_00,
       upperBoundTolerance: 50,
       lowerBoundTolerance: 1_00,
@@ -115,6 +123,8 @@ abstract contract AaveV3Horizon_mWINHINCListing_20261023_TestBase is ProtocolV3H
     });
     expectedHincLlamaGuardConfig = ExpectedLlamaGuardConfig({
       underlying: AaveV3EthereumHorizonCustom.HINC_UNDERLYING,
+      // https://etherscan.io/address/0xBD43982F064F8Fa468e29E85133a38a4f81A025f
+      aggregator: 0xBD43982F064F8Fa468e29E85133a38a4f81A025f,
       maxExpectedApy: 8_00,
       upperBoundTolerance: 50,
       lowerBoundTolerance: 2_00,
@@ -142,7 +152,7 @@ contract AaveV3Horizon_mWINHINCListing_20261023_Test is
 
   function setUp() public virtual override {
     super.setUp();
-    vm.createSelectFork(vm.rpcUrl('mainnet'), 26254000);
+    vm.createSelectFork(vm.rpcUrl('mainnet'), 26298000);
     proposal = new AaveV3Horizon_mWINHINCListing_20261023();
   }
 
@@ -435,7 +445,8 @@ contract AaveV3Horizon_mWINHINCListing_20261023_Test is
 
   /**
    * @dev the Aave price source must be the feed LlamaRisk bounds in its parameter registry, with
-   *      the LlamaGuard parameters from the approved risk reviews
+   *      the LlamaGuard parameters from the approved risk reviews, and Chainlink's Safe must own
+   *      both the feed proxy and its aggregator
    */
   function test_llamaGuardConfig() public {
     _executeHorizonPayload(address(proposal));
@@ -474,10 +485,15 @@ contract AaveV3Horizon_mWINHINCListing_20261023_Test is
     IRwaOracleParameterRegistry registry = IRwaOracleParameterRegistry(
       AaveV3EthereumHorizonCustom.RWA_ORACLE_PARAMS_REGISTRY
     );
+    address feed = AaveV3EthereumHorizon.ORACLE.getSourceOfAsset(expected.underlying);
+    assertEq(registry.getOracle(expected.underlying), feed, 'llamaGuard.oracle');
+
+    assertEq(IEACAggregatorProxy(feed).aggregator(), expected.aggregator, 'feed.aggregator');
+    assertEq(IEACAggregatorProxy(feed).owner(), CHAINLINK_FEED_OWNER, 'feed.proxyOwner');
     assertEq(
-      registry.getOracle(expected.underlying),
-      AaveV3EthereumHorizon.ORACLE.getSourceOfAsset(expected.underlying),
-      'llamaGuard.oracle'
+      IEACAggregatorProxy(expected.aggregator).owner(),
+      CHAINLINK_FEED_OWNER,
+      'feed.aggregatorOwner'
     );
 
     (

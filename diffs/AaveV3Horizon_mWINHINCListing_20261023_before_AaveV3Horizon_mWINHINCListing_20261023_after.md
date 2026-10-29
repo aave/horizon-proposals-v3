@@ -17,7 +17,7 @@
 | oracle | [0x6b447A72D8243E96F5782ad6BdffD2dc813bb82E](https://etherscan.io/address/0x6b447A72D8243E96F5782ad6BdffD2dc813bb82E) |
 | oracleDecimals | 8 |
 | oracleDescription | HINC NAV - AAVE LlamaGuard |
-| oracleLatestAnswer | 975.456683 |
+| oracleLatestAnswer | 981.02997463 |
 | usageAsCollateralEnabled | true |
 | ltv | 55 % [5500] |
 | liquidationThreshold | 67 % [6700] |
@@ -60,7 +60,7 @@
 | oracle | [0x31E18898399A419Aa20A18eC8fc49Cc39B77CdE8](https://etherscan.io/address/0x31E18898399A419Aa20A18eC8fc49Cc39B77CdE8) |
 | oracleDecimals | 8 |
 | oracleDescription | MWIN NAV - Aave Llamaguard |
-| oracleLatestAnswer | 131241.91551278 |
+| oracleLatestAnswer | 131714.34393701 |
 | usageAsCollateralEnabled | true |
 | ltv | 67 % [6700] |
 | liquidationThreshold | 72 % [7200] |
@@ -231,7 +231,7 @@
         "oracle": "0x6b447A72D8243E96F5782ad6BdffD2dc813bb82E",
         "oracleDecimals": 8,
         "oracleDescription": "HINC NAV - AAVE LlamaGuard",
-        "oracleLatestAnswer": "97545668300",
+        "oracleLatestAnswer": "98102997463",
         "reserveFactor": 0,
         "supplyCap": 10000,
         "symbol": "HINC",
@@ -269,7 +269,7 @@
         "oracle": "0x31E18898399A419Aa20A18eC8fc49Cc39B77CdE8",
         "oracleDecimals": 8,
         "oracleDescription": "MWIN NAV - Aave Llamaguard",
-        "oracleLatestAnswer": "13124191551278",
+        "oracleLatestAnswer": "13171434393701",
         "reserveFactor": 0,
         "supplyCap": 80,
         "symbol": "mWIN",
