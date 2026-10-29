@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 import {IPool} from 'aave-v3-origin/contracts/interfaces/IPool.sol';
 import {IERC20} from 'aave-v3-origin/contracts/dependencies/openzeppelin/contracts/IERC20.sol';
 import {IAToken} from 'aave-v3-origin/contracts/interfaces/IAToken.sol';
-import {IAccessControl} from 'aave-v3-origin/contracts/dependencies/openzeppelin/contracts/IAccessControl.sol';
 import {IDefaultInterestRateStrategyV2} from 'aave-v3-origin/contracts/interfaces/IDefaultInterestRateStrategyV2.sol';
 import {IRwaOracleParameterRegistry} from 'src/interfaces/IRwaOracleParameterRegistry.sol';
 import {ProtocolV3HorizonTestBase, ReserveConfig} from 'tests/utils/ProtocolV3HorizonTestBase.sol';
@@ -231,7 +230,7 @@ contract AaveV3Horizon_mWINHINCListing_20261023_Test is
 
     // borrower supplies 2 mWIN (~$262k) and borrows 150k GHO in default mode (67% LTV, 72% LT)
     address borrower = makeAddr('mwinBorrower');
-    _grantMidasRole(MWIN_GREENLISTED_ROLE, borrower);
+    _whitelistMwinRwa(borrower);
     deal(mWin, borrower, 2e18);
     vm.startPrank(borrower);
     IERC20(mWin).approve(address(pool), 2e18);
@@ -250,7 +249,7 @@ contract AaveV3Horizon_mWINHINCListing_20261023_Test is
     uint256 debtToCover = 50_000e18;
     address liquidator = makeAddr('mwinLiquidator');
     address exemptLiquidator = makeAddr('mwinExemptLiquidator');
-    _grantMidasRole(MWIN_GREENLISTED_ROLE, liquidator);
+    _whitelistMwinRwa(liquidator);
     _whitelistMwinRwa(exemptLiquidator);
     _exemptMwinMinBalance(exemptLiquidator);
 
@@ -376,10 +375,10 @@ contract AaveV3Horizon_mWINHINCListing_20261023_Test is
       _setMwinRoles(user, roles.fromGreenlisted, roles.fromExempt);
       _setMwinRoles(aToken, roles.toGreenlisted, roles.toExempt);
 
-      _expectMwinTransferOutcome(roles);
+      bool succeeds = _expectMwinTransferOutcome(roles);
       vm.prank(user);
       pool.supply(_mwin(), 0.5e18, user, 0);
-      if (_mwinTransferSucceeds(roles)) {
+      if (succeeds) {
         assertEq(IERC20(_mwin()).balanceOf(user), 0.5e18, 'user balance');
         assertEq(IERC20(_mwin()).balanceOf(aToken), 0.5e18, 'aToken balance');
       }
@@ -398,10 +397,10 @@ contract AaveV3Horizon_mWINHINCListing_20261023_Test is
       _setMwinRoles(aToken, roles.fromGreenlisted, roles.fromExempt);
       _setMwinRoles(user, roles.toGreenlisted, roles.toExempt);
 
-      _expectMwinTransferOutcome(roles);
+      bool succeeds = _expectMwinTransferOutcome(roles);
       vm.prank(user);
       pool.withdraw(_mwin(), 0.75e18, user);
-      if (_mwinTransferSucceeds(roles)) {
+      if (succeeds) {
         assertEq(IERC20(_mwin()).balanceOf(aToken), 0.75e18, 'aToken balance');
         assertEq(IERC20(_mwin()).balanceOf(user), 0.75e18, 'user balance');
       }
@@ -422,9 +421,9 @@ contract AaveV3Horizon_mWINHINCListing_20261023_Test is
       _setMwinRoles(aToken, roles.fromGreenlisted, roles.fromExempt);
       _setMwinRoles(liquidator, roles.toGreenlisted, roles.toExempt);
 
-      _expectMwinTransferOutcome(roles);
+      bool succeeds = _expectMwinTransferOutcome(roles);
       _liquidateMwin(pool, liquidator, borrower);
-      if (_mwinTransferSucceeds(roles)) {
+      if (succeeds) {
         uint256 seized = IERC20(_mwin()).balanceOf(liquidator);
         assertGt(seized, 0, 'no mWIN seized');
         assertLt(seized, 1e18, 'seized at least 1 mWIN');
@@ -529,7 +528,7 @@ contract AaveV3Horizon_mWINHINCListing_20261023_Test is
     pool.supply(_mwin(), amount, user, 0);
   }
 
-  /// @dev supplies mWIN, borrows GHO in default mode, then drops the mWIN price 30% below the liquidation threshold
+  /// @dev supplies mWIN, borrows GHO in default mode, then drops the mWIN price 30%, putting the position below the liquidation threshold
   function _openLiquidatableMwinPosition(
     IPool pool,
     uint256 collateral,
@@ -575,27 +574,22 @@ contract AaveV3Horizon_mWINHINCListing_20261023_Test is
       });
   }
 
-  /// @dev both parties end between 0 and 1 mWIN, so each needs both roles
-  function _mwinTransferSucceeds(MwinRoles memory roles) internal pure returns (bool) {
-    return roles.fromGreenlisted && roles.fromExempt && roles.toGreenlisted && roles.toExempt;
-  }
-
-  function _expectMwinTransferOutcome(MwinRoles memory roles) internal {
+  /// @dev expects the revert, if any, and returns whether the transfer succeeds. Both parties end
+  ///      between 0 and 1 mWIN, so each needs both roles.
+  function _expectMwinTransferOutcome(MwinRoles memory roles) internal returns (bool) {
     if (!roles.fromGreenlisted || !roles.toGreenlisted) {
       vm.expectRevert(bytes('WMAC: hasnt role'));
-    } else if (!roles.fromExempt || !roles.toExempt) {
-      vm.expectRevert(bytes('MTMB: min balance not met'));
+      return false;
     }
+    if (!roles.fromExempt || !roles.toExempt) {
+      vm.expectRevert(bytes('MTMB: min balance not met'));
+      return false;
+    }
+    return true;
   }
 
   function _setMwinRoles(address account, bool greenlisted, bool exempt) internal {
     _setMidasRole(MWIN_GREENLISTED_ROLE, account, greenlisted);
     _setMidasRole(MWIN_MIN_BALANCE_EXEMPT_ROLE, account, exempt);
-  }
-
-  function _setMidasRole(bytes32 role, address account, bool granted) internal {
-    bytes32 slot = keccak256(abi.encode(account, keccak256(abi.encode(role, MIDAS_ROLES_SLOT))));
-    vm.store(MIDAS_ACCESS_CONTROL, slot, bytes32(uint256(granted ? 1 : 0)));
-    assertEq(IAccessControl(MIDAS_ACCESS_CONTROL).hasRole(role, account), granted, 'midas role');
   }
 }

@@ -269,14 +269,18 @@ abstract contract HorizonRwaWhitelistHelper is Test {
   }
 
   function _grantMidasRole(bytes32 role, address account) internal {
-    bytes32 slot = keccak256(abi.encode(account, keccak256(abi.encode(role, MIDAS_ROLES_SLOT))));
-    vm.store(MIDAS_ACCESS_CONTROL, slot, bytes32(uint256(1)));
+    _setMidasRole(role, account, true);
+  }
 
-    // Verify role granted
+  function _setMidasRole(bytes32 role, address account, bool granted) internal {
+    bytes32 slot = keccak256(abi.encode(account, keccak256(abi.encode(role, MIDAS_ROLES_SLOT))));
+    vm.store(MIDAS_ACCESS_CONTROL, slot, bytes32(uint256(granted ? 1 : 0)));
+
+    // Verify role set
     (bool success, bytes memory data) = MIDAS_ACCESS_CONTROL.call(
       abi.encodeWithSignature('hasRole(bytes32,address)', role, account)
     );
-    require(success && abi.decode(data, (bool)), 'Midas: role not granted');
+    require(success && abi.decode(data, (bool)) == granted, 'Midas: role not set');
   }
 
   /**
