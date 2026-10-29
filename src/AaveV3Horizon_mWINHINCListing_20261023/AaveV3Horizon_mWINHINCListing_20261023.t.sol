@@ -10,6 +10,7 @@ import {ProtocolV3HorizonTestBase, ReserveConfig} from 'tests/utils/ProtocolV3Ho
 import {AaveV3Horizon_mWINHINCListing_20261023} from 'src/AaveV3Horizon_mWINHINCListing_20261023/AaveV3Horizon_mWINHINCListing_20261023.sol';
 import {AaveV3EthereumHorizonCustom} from 'src/utils/AaveV3EthereumHorizonCustom.sol';
 import {AaveV3EthereumHorizon, AaveV3EthereumHorizonAssets} from 'aave-address-book-latest/AaveV3EthereumHorizon.sol';
+import {AaveV3Ethereum} from 'aave-address-book-latest/AaveV3Ethereum.sol';
 
 abstract contract AaveV3Horizon_mWINHINCListing_20261023_TestBase is ProtocolV3HorizonTestBase {
   struct ExpectedLlamaGuardConfig {
@@ -281,9 +282,15 @@ contract AaveV3Horizon_mWINHINCListing_20261023_Test is
   }
 
   /**
-   * @dev the aToken treasury must be the DAO Collector, not a RevenueSplitter
+   * @dev the aToken treasury must be the DAO Collector, not a RevenueSplitter, and Horizon's
+   *      collector must be the same contract as the v3 Core instance's collector
    */
   function _assertTreasuryIsCollector(IPool pool, address underlying) internal view {
+    assertEq(
+      address(AaveV3EthereumHorizon.COLLECTOR),
+      address(AaveV3Ethereum.COLLECTOR),
+      'collector is not the v3 core collector'
+    );
     assertEq(
       IAToken(pool.getReserveAToken(underlying)).RESERVE_TREASURY_ADDRESS(),
       address(AaveV3EthereumHorizon.COLLECTOR),
