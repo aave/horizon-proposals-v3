@@ -298,29 +298,13 @@ abstract contract HorizonRwaWhitelistHelper is Test {
     string memory fundId,
     address addressToWhitelist
   ) internal {
-    (bool success, bytes memory data) = token.call(abi.encodeWithSignature('REGISTRY_SERVICE()'));
-    require(success, 'Failed to call REGISTRY_SERVICE()');
-    (success, data) = token.call(
-      abi.encodeWithSignature('getDSService(uint256)', abi.decode(data, (uint256)))
-    );
-    require(success, 'Failed to call getDSService()');
-    address registryService = abi.decode(data, (address));
-
-    // Ensure admin has a role on the trust service (role mapping at slot 1)
-    (success, data) = token.call(abi.encodeWithSignature('TRUST_SERVICE()'));
-    require(success, 'Failed to call TRUST_SERVICE()');
-    (success, data) = token.call(
-      abi.encodeWithSignature('getDSService(uint256)', abi.decode(data, (uint256)))
-    );
-    require(success, 'Failed to call getDSService() for trust');
-    address trustService = abi.decode(data, (address));
-    bytes32 roleSlot = keccak256(abi.encode(admin, uint256(1)));
-    vm.store(trustService, roleSlot, bytes32(uint256(2)));
+    address registryService = _getSecuritizeService(token, 'REGISTRY_SERVICE()');
+    _grantSecuritizeIssuerRole(token, admin);
 
     if (_isSecuritizeWhitelisted(registryService, addressToWhitelist)) return;
 
     vm.prank(admin);
-    (success, ) = registryService.call(
+    (bool success, ) = registryService.call(
       abi.encodeWithSignature('addWallet(address,string)', addressToWhitelist, fundId)
     );
     // always verify the address is whitelisted as a regular wallet OR passes compliance as a special wallet.
@@ -341,30 +325,17 @@ abstract contract HorizonRwaWhitelistHelper is Test {
     address admin,
     address wallet
   ) internal {
-    (bool success, bytes memory data) = token.call(abi.encodeWithSignature('WALLET_MANAGER()'));
-    require(success, 'Failed to call WALLET_MANAGER()');
-    (success, data) = token.call(
-      abi.encodeWithSignature('getDSService(uint256)', abi.decode(data, (uint256)))
-    );
-    require(success, 'Failed to call getDSService() for wallet manager');
-    address walletManager = abi.decode(data, (address));
+    address walletManager = _getSecuritizeService(token, 'WALLET_MANAGER()');
 
     // Already registered (e.g. on mainnet after listing): re-adding reverts on a set wallet type
     if (_isSecuritizePlatformWallet(walletManager, wallet)) return;
 
-    // Ensure admin has the issuer role on the trust service (role mapping at slot 1)
-    (success, data) = token.call(abi.encodeWithSignature('TRUST_SERVICE()'));
-    require(success, 'Failed to call TRUST_SERVICE()');
-    (success, data) = token.call(
-      abi.encodeWithSignature('getDSService(uint256)', abi.decode(data, (uint256)))
-    );
-    require(success, 'Failed to call getDSService() for trust');
-    address trustService = abi.decode(data, (address));
-    bytes32 roleSlot = keccak256(abi.encode(admin, uint256(1)));
-    vm.store(trustService, roleSlot, bytes32(uint256(2)));
+    _grantSecuritizeIssuerRole(token, admin);
 
     vm.prank(admin);
-    (success, ) = walletManager.call(abi.encodeWithSignature('addPlatformWallet(address)', wallet));
+    (bool success, ) = walletManager.call(
+      abi.encodeWithSignature('addPlatformWallet(address)', wallet)
+    );
     require(success, 'Failed to call addPlatformWallet()');
 
     // Verify registered as a platform wallet
@@ -372,6 +343,27 @@ abstract contract HorizonRwaWhitelistHelper is Test {
       _isSecuritizePlatformWallet(walletManager, wallet),
       'Securitize: not a platform wallet'
     );
+  }
+
+  /// @dev Resolves one of the token's DS services: `serviceIdGetter` (e.g. 'TRUST_SERVICE()')
+  ///      returns the service id, and getDSService maps it to the service address.
+  function _getSecuritizeService(
+    address token,
+    string memory serviceIdGetter
+  ) internal returns (address) {
+    (bool success, bytes memory data) = token.call(abi.encodeWithSignature(serviceIdGetter));
+    require(success, string.concat('Failed to call ', serviceIdGetter));
+    (success, data) = token.call(
+      abi.encodeWithSignature('getDSService(uint256)', abi.decode(data, (uint256)))
+    );
+    require(success, string.concat('Failed to call getDSService() for ', serviceIdGetter));
+    return abi.decode(data, (address));
+  }
+
+  /// @dev Grants `admin` the issuer role (2) on the token's trust service (role mapping at slot 1).
+  function _grantSecuritizeIssuerRole(address token, address admin) internal {
+    address trustService = _getSecuritizeService(token, 'TRUST_SERVICE()');
+    vm.store(trustService, keccak256(abi.encode(admin, uint256(1))), bytes32(uint256(2)));
   }
 
   /// @dev Returns true if `wallet` is registered as a platform wallet.
