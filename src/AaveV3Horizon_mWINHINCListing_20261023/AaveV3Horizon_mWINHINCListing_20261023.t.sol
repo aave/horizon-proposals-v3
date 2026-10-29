@@ -131,6 +131,15 @@ abstract contract AaveV3Horizon_mWINHINCListing_20261023_TestBase is ProtocolV3H
 contract AaveV3Horizon_mWINHINCListing_20261023_Test is
   AaveV3Horizon_mWINHINCListing_20261023_TestBase
 {
+  struct MwinRoles {
+    bool fromGreenlisted;
+    bool fromExempt;
+    bool toGreenlisted;
+    bool toExempt;
+  }
+
+  uint256 internal constant MWIN_DEBT_TO_COVER = 50_000e18;
+
   function setUp() public virtual override {
     super.setUp();
     vm.createSelectFork(vm.rpcUrl('mainnet'), 26254000);
@@ -191,7 +200,7 @@ contract AaveV3Horizon_mWINHINCListing_20261023_Test is
 
     address user = makeAddr('mwinUser');
     address mWin = AaveV3EthereumHorizonCustom.MWIN_UNDERLYING;
-    _grantMidasRole(MWIN_GREENLISTED_ROLE, user);
+    _whitelistMwinRwa(user);
 
     deal(mWin, user, 2e18);
     vm.startPrank(user);
@@ -218,10 +227,11 @@ contract AaveV3Horizon_mWINHINCListing_20261023_Test is
     address mWin = AaveV3EthereumHorizonCustom.MWIN_UNDERLYING;
     address gho = AaveV3EthereumHorizonAssets.GHO_UNDERLYING;
     _whitelistMwinRwa(pool.getReserveAToken(mWin));
+    _exemptMwinMinBalance(pool.getReserveAToken(mWin));
 
     // borrower supplies 2 mWIN (~$262k) and borrows 150k GHO in default mode (67% LTV, 72% LT)
     address borrower = makeAddr('mwinBorrower');
-    _grantMidasRole(MWIN_GREENLISTED_ROLE, borrower);
+    _whitelistMwinRwa(borrower);
     deal(mWin, borrower, 2e18);
     vm.startPrank(borrower);
     IERC20(mWin).approve(address(pool), 2e18);
@@ -240,8 +250,9 @@ contract AaveV3Horizon_mWINHINCListing_20261023_Test is
     uint256 debtToCover = 50_000e18;
     address liquidator = makeAddr('mwinLiquidator');
     address exemptLiquidator = makeAddr('mwinExemptLiquidator');
-    _grantMidasRole(MWIN_GREENLISTED_ROLE, liquidator);
+    _whitelistMwinRwa(liquidator);
     _whitelistMwinRwa(exemptLiquidator);
+    _exemptMwinMinBalance(exemptLiquidator);
 
     deal(gho, liquidator, debtToCover);
     vm.startPrank(liquidator);
@@ -259,6 +270,167 @@ contract AaveV3Horizon_mWINHINCListing_20261023_Test is
     uint256 seized = IERC20(mWin).balanceOf(exemptLiquidator);
     assertGt(seized, 0, 'no mWIN seized');
     assertLt(seized, 1e18, 'seized at least 1 mWIN');
+  }
+
+  /**
+   * @dev The tests below each make the same call twice on the same state: first reverting on the
+   *      1-mWIN minimum, then succeeding once M_WIN_MIN_BALANCE_EXEMPT_ROLE is granted to the
+   *      account the check failed on. The RWA aToken is the recipient on supply and the sender on
+   *      withdraw and liquidation, so it needs the exemption as well as liquidators.
+   */
+  function test_mwinMinBalance_withdraw_userNeedsExemption() public {
+    IPool pool = _setUpMwin({aTokenExempt: true});
+    address user = _supplyMwin(pool, 'mwinUser', 2e18);
+
+    vm.expectRevert(bytes('MTMB: min balance not met'));
+    vm.prank(user);
+    pool.withdraw(_mwin(), 0.5e18, user);
+
+    _exemptMwinMinBalance(user);
+    vm.prank(user);
+    pool.withdraw(_mwin(), 0.5e18, user);
+    assertEq(IERC20(_mwin()).balanceOf(user), 0.5e18);
+  }
+
+  function test_mwinMinBalance_supply_aTokenNeedsExemption() public {
+    IPool pool = _setUpMwin({aTokenExempt: false});
+    address user = _greenlistedMwinUser('mwinUser');
+    address aToken = pool.getReserveAToken(_mwin());
+    _dealAndApproveMwin(pool, user, 0.5e18);
+
+    vm.expectRevert(bytes('MTMB: min balance not met'));
+    vm.prank(user);
+    pool.supply(_mwin(), 0.5e18, user, 0);
+
+    _exemptMwinMinBalance(aToken);
+    vm.prank(user);
+    pool.supply(_mwin(), 0.5e18, user, 0);
+    assertEq(IERC20(_mwin()).balanceOf(aToken), 0.5e18);
+  }
+
+  function test_mwinMinBalance_withdraw_aTokenNeedsExemption() public {
+    IPool pool = _setUpMwin({aTokenExempt: false});
+    address user = _supplyMwin(pool, 'mwinUser', 1.5e18);
+    address aToken = pool.getReserveAToken(_mwin());
+
+    vm.expectRevert(bytes('MTMB: min balance not met'));
+    vm.prank(user);
+    pool.withdraw(_mwin(), 1e18, user);
+
+    _exemptMwinMinBalance(aToken);
+    vm.prank(user);
+    pool.withdraw(_mwin(), 1e18, user);
+    assertEq(IERC20(_mwin()).balanceOf(aToken), 0.5e18);
+  }
+
+  function test_mwinMinBalance_liquidation_aTokenNeedsExemption() public {
+    IPool pool = _setUpMwin({aTokenExempt: false});
+    address borrower = _openLiquidatableMwinPosition(pool, 1.5e18, 112_500e18);
+    address liquidator = _greenlistedMwinUser('mwinLiquidator');
+    _exemptMwinMinBalance(liquidator);
+    address aToken = pool.getReserveAToken(_mwin());
+    _dealAndApproveGho(pool, liquidator);
+
+    vm.expectRevert(bytes('MTMB: min balance not met'));
+    _liquidateMwin(pool, liquidator, borrower);
+
+    _exemptMwinMinBalance(aToken);
+    _liquidateMwin(pool, liquidator, borrower);
+    uint256 aTokenBalance = IERC20(_mwin()).balanceOf(aToken);
+    assertGt(aTokenBalance, 0, 'aToken emptied');
+    assertLt(aTokenBalance, 1e18, 'aToken left with at least 1 mWIN');
+  }
+
+  function test_mwinMinBalance_liquidation_liquidatorNeedsExemption() public {
+    IPool pool = _setUpMwin({aTokenExempt: true});
+    address borrower = _openLiquidatableMwinPosition(pool, 2e18, 150_000e18);
+    address liquidator = _greenlistedMwinUser('mwinLiquidator');
+    _dealAndApproveGho(pool, liquidator);
+
+    vm.expectRevert(bytes('MTMB: min balance not met'));
+    _liquidateMwin(pool, liquidator, borrower);
+
+    _exemptMwinMinBalance(liquidator);
+    _liquidateMwin(pool, liquidator, borrower);
+    uint256 seized = IERC20(_mwin()).balanceOf(liquidator);
+    assertGt(seized, 0, 'no mWIN seized');
+    assertLt(seized, 1e18, 'seized at least 1 mWIN');
+  }
+
+  /**
+   * @dev For each path, runs the same transfer under every combination of greenlist role and
+   *      min balance exemption on its two mWIN parties, with amounts that leave both parties
+   *      holding between 0 and 1 mWIN. mWIN checks the greenlist on both parties before the
+   *      transfer and the 1-mWIN minimum on both after it.
+   */
+  function test_mwinRoles_supply() public {
+    IPool pool = _setUpMwin({aTokenExempt: false});
+    address user = _greenlistedMwinUser('mwinUser');
+    address aToken = pool.getReserveAToken(_mwin());
+    _dealAndApproveMwin(pool, user, 1e18);
+
+    uint256 snapshot = vm.snapshotState();
+    for (uint256 i; i < 16; i++) {
+      vm.revertToState(snapshot);
+      MwinRoles memory roles = _mwinRolesCase(i);
+      _setMwinRoles(user, roles.fromGreenlisted, roles.fromExempt);
+      _setMwinRoles(aToken, roles.toGreenlisted, roles.toExempt);
+
+      bool succeeds = _expectMwinTransferOutcome(roles);
+      vm.prank(user);
+      pool.supply(_mwin(), 0.5e18, user, 0);
+      if (succeeds) {
+        assertEq(IERC20(_mwin()).balanceOf(user), 0.5e18, 'user balance');
+        assertEq(IERC20(_mwin()).balanceOf(aToken), 0.5e18, 'aToken balance');
+      }
+    }
+  }
+
+  function test_mwinRoles_withdraw() public {
+    IPool pool = _setUpMwin({aTokenExempt: false});
+    address user = _supplyMwin(pool, 'mwinUser', 1.5e18);
+    address aToken = pool.getReserveAToken(_mwin());
+
+    uint256 snapshot = vm.snapshotState();
+    for (uint256 i; i < 16; i++) {
+      vm.revertToState(snapshot);
+      MwinRoles memory roles = _mwinRolesCase(i);
+      _setMwinRoles(aToken, roles.fromGreenlisted, roles.fromExempt);
+      _setMwinRoles(user, roles.toGreenlisted, roles.toExempt);
+
+      bool succeeds = _expectMwinTransferOutcome(roles);
+      vm.prank(user);
+      pool.withdraw(_mwin(), 0.75e18, user);
+      if (succeeds) {
+        assertEq(IERC20(_mwin()).balanceOf(aToken), 0.75e18, 'aToken balance');
+        assertEq(IERC20(_mwin()).balanceOf(user), 0.75e18, 'user balance');
+      }
+    }
+  }
+
+  function test_mwinRoles_liquidation() public {
+    IPool pool = _setUpMwin({aTokenExempt: false});
+    address borrower = _openLiquidatableMwinPosition(pool, 1.5e18, 112_500e18);
+    address liquidator = makeAddr('mwinLiquidator');
+    address aToken = pool.getReserveAToken(_mwin());
+    _dealAndApproveGho(pool, liquidator);
+
+    uint256 snapshot = vm.snapshotState();
+    for (uint256 i; i < 16; i++) {
+      vm.revertToState(snapshot);
+      MwinRoles memory roles = _mwinRolesCase(i);
+      _setMwinRoles(aToken, roles.fromGreenlisted, roles.fromExempt);
+      _setMwinRoles(liquidator, roles.toGreenlisted, roles.toExempt);
+
+      bool succeeds = _expectMwinTransferOutcome(roles);
+      _liquidateMwin(pool, liquidator, borrower);
+      if (succeeds) {
+        uint256 seized = IERC20(_mwin()).balanceOf(liquidator);
+        assertGt(seized, 0, 'no mWIN seized');
+        assertLt(seized, 1e18, 'seized at least 1 mWIN');
+        assertEq(IERC20(_mwin()).balanceOf(aToken), 1.5e18 - seized, 'aToken balance');
+      }
+    }
   }
 
   /**
@@ -325,5 +497,106 @@ contract AaveV3Horizon_mWINHINCListing_20261023_Test is
     assertEq(lookbackWindowSize, expected.lookbackWindowSize, 'llamaGuard.lookbackWindowSize');
     assertTrue(isUpperBoundEnabled, 'llamaGuard.isUpperBoundEnabled');
     assertTrue(isLowerBoundEnabled, 'llamaGuard.isLowerBoundEnabled');
+  }
+
+  function _mwin() internal pure returns (address) {
+    return AaveV3EthereumHorizonCustom.MWIN_UNDERLYING;
+  }
+
+  /// @dev executes the payload and greenlists the mWIN aToken, with or without the min balance exemption
+  function _setUpMwin(bool aTokenExempt) internal returns (IPool) {
+    IPool pool = _pool();
+    _executeHorizonPayload(address(proposal));
+    address aToken = pool.getReserveAToken(_mwin());
+    _whitelistMwinRwa(aToken);
+    if (aTokenExempt) _exemptMwinMinBalance(aToken);
+    return pool;
+  }
+
+  function _greenlistedMwinUser(string memory name) internal returns (address user) {
+    user = makeAddr(name);
+    _whitelistMwinRwa(user);
+  }
+
+  function _dealAndApproveMwin(IPool pool, address user, uint256 amount) internal {
+    deal(_mwin(), user, amount);
+    vm.prank(user);
+    IERC20(_mwin()).approve(address(pool), amount);
+  }
+
+  function _supplyMwin(
+    IPool pool,
+    string memory name,
+    uint256 amount
+  ) internal returns (address user) {
+    user = _greenlistedMwinUser(name);
+    _dealAndApproveMwin(pool, user, amount);
+    vm.prank(user);
+    pool.supply(_mwin(), amount, user, 0);
+  }
+
+  /// @dev supplies mWIN, borrows GHO in default mode, then drops the mWIN price 30%, putting the position below the liquidation threshold
+  function _openLiquidatableMwinPosition(
+    IPool pool,
+    uint256 collateral,
+    uint256 debt
+  ) internal returns (address borrower) {
+    borrower = _supplyMwin(pool, 'mwinBorrower', collateral);
+    vm.prank(borrower);
+    pool.borrow(AaveV3EthereumHorizonAssets.GHO_UNDERLYING, debt, 2, 0, borrower);
+
+    ReserveConfig memory mwinConfig;
+    mwinConfig.underlying = _mwin();
+    _changeAssetPrice(pool, mwinConfig, 70_00);
+    (, , , , , uint256 healthFactor) = pool.getUserAccountData(borrower);
+    assertLt(healthFactor, 1e18, 'borrower not liquidatable');
+  }
+
+  function _dealAndApproveGho(IPool pool, address liquidator) internal {
+    deal(AaveV3EthereumHorizonAssets.GHO_UNDERLYING, liquidator, MWIN_DEBT_TO_COVER);
+    vm.prank(liquidator);
+    IERC20(AaveV3EthereumHorizonAssets.GHO_UNDERLYING).approve(address(pool), MWIN_DEBT_TO_COVER);
+  }
+
+  /// @dev covers 50k GHO, which seizes ~0.59 mWIN (50k * 1.08 bonus / ~$91.9k)
+  function _liquidateMwin(IPool pool, address liquidator, address borrower) internal {
+    vm.prank(liquidator);
+    pool.liquidationCall({
+      collateralAsset: _mwin(),
+      debtAsset: AaveV3EthereumHorizonAssets.GHO_UNDERLYING,
+      borrower: borrower,
+      debtToCover: MWIN_DEBT_TO_COVER,
+      receiveAToken: false
+    });
+  }
+
+  /// @dev bit 0: sender greenlisted, bit 1: sender exempt, bit 2: recipient greenlisted, bit 3: recipient exempt
+  function _mwinRolesCase(uint256 i) internal pure returns (MwinRoles memory) {
+    return
+      MwinRoles({
+        fromGreenlisted: i & 1 != 0,
+        fromExempt: i & 2 != 0,
+        toGreenlisted: i & 4 != 0,
+        toExempt: i & 8 != 0
+      });
+  }
+
+  /// @dev expects the revert, if any, and returns whether the transfer succeeds. Both parties end
+  ///      between 0 and 1 mWIN, so each needs both roles.
+  function _expectMwinTransferOutcome(MwinRoles memory roles) internal returns (bool) {
+    if (!roles.fromGreenlisted || !roles.toGreenlisted) {
+      vm.expectRevert(bytes('WMAC: hasnt role'));
+      return false;
+    }
+    if (!roles.fromExempt || !roles.toExempt) {
+      vm.expectRevert(bytes('MTMB: min balance not met'));
+      return false;
+    }
+    return true;
+  }
+
+  function _setMwinRoles(address account, bool greenlisted, bool exempt) internal {
+    _setMidasRole(MWIN_GREENLISTED_ROLE, account, greenlisted);
+    _setMidasRole(MWIN_MIN_BALANCE_EXEMPT_ROLE, account, exempt);
   }
 }
