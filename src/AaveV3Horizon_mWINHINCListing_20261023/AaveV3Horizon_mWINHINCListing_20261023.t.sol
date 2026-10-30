@@ -149,6 +149,9 @@ contract AaveV3Horizon_mWINHINCListing_20261023_Test is
   }
 
   uint256 internal constant MWIN_DEBT_TO_COVER = 50_000e18;
+  // mWIN reverts a transfer leaving a holder without M_WIN_MIN_BALANCE_EXEMPT_ROLE below this
+  // balance, unless the balance is 0
+  uint256 internal constant MWIN_MIN_BALANCE = 1e18;
 
   function setUp() public virtual override {
     super.setUp();
@@ -220,8 +223,8 @@ contract AaveV3Horizon_mWINHINCListing_20261023_Test is
     vm.expectRevert(bytes('MTMB: min balance not met'));
     pool.withdraw(mWin, 0.5e18, user);
 
-    pool.withdraw(mWin, 1e18, user);
-    assertEq(IERC20(mWin).balanceOf(user), 1e18);
+    pool.withdraw(mWin, MWIN_MIN_BALANCE, user);
+    assertEq(IERC20(mWin).balanceOf(user), MWIN_MIN_BALANCE);
     vm.stopPrank();
   }
 
@@ -239,7 +242,7 @@ contract AaveV3Horizon_mWINHINCListing_20261023_Test is
     _whitelistMwinRwa(pool.getReserveAToken(mWin));
     _exemptMwinMinBalance(pool.getReserveAToken(mWin));
 
-    // borrower supplies 2 mWIN (~$262k) and borrows 150k GHO in default mode (67% LTV, 72% LT)
+    // borrower supplies 2 mWIN (~$263k) and borrows 150k GHO in default mode (67% LTV, 72% LT)
     address borrower = makeAddr('mwinBorrower');
     _whitelistMwinRwa(borrower);
     deal(mWin, borrower, 2e18);
@@ -256,30 +259,27 @@ contract AaveV3Horizon_mWINHINCListing_20261023_Test is
     (, , , , , uint256 healthFactor) = pool.getUserAccountData(borrower);
     assertLt(healthFactor, 1e18, 'borrower not liquidatable');
 
-    // covering 50k GHO seizes ~0.59 mWIN (50k * 1.08 bonus / ~$91.9k)
-    uint256 debtToCover = 50_000e18;
+    // covering 50k GHO seizes ~0.59 mWIN (50k * 1.08 bonus / ~$92.2k)
     address liquidator = makeAddr('mwinLiquidator');
     address exemptLiquidator = makeAddr('mwinExemptLiquidator');
     _whitelistMwinRwa(liquidator);
     _whitelistMwinRwa(exemptLiquidator);
     _exemptMwinMinBalance(exemptLiquidator);
 
-    deal(gho, liquidator, debtToCover);
+    deal(gho, liquidator, MWIN_DEBT_TO_COVER);
     vm.startPrank(liquidator);
-    IERC20(gho).approve(address(pool), debtToCover);
+    IERC20(gho).approve(address(pool), MWIN_DEBT_TO_COVER);
     vm.expectRevert(bytes('MTMB: min balance not met'));
-    pool.liquidationCall(mWin, gho, borrower, debtToCover, false);
+    pool.liquidationCall(mWin, gho, borrower, MWIN_DEBT_TO_COVER, false);
     vm.stopPrank();
 
-    deal(gho, exemptLiquidator, debtToCover);
+    deal(gho, exemptLiquidator, MWIN_DEBT_TO_COVER);
     vm.startPrank(exemptLiquidator);
-    IERC20(gho).approve(address(pool), debtToCover);
-    pool.liquidationCall(mWin, gho, borrower, debtToCover, false);
+    IERC20(gho).approve(address(pool), MWIN_DEBT_TO_COVER);
+    pool.liquidationCall(mWin, gho, borrower, MWIN_DEBT_TO_COVER, false);
     vm.stopPrank();
 
-    uint256 seized = IERC20(mWin).balanceOf(exemptLiquidator);
-    assertGt(seized, 0, 'no mWIN seized');
-    assertLt(seized, 1e18, 'seized at least 1 mWIN');
+    _assertBelowMwinMinBalance(exemptLiquidator, 'liquidator');
   }
 
   /**
@@ -346,9 +346,7 @@ contract AaveV3Horizon_mWINHINCListing_20261023_Test is
 
     _exemptMwinMinBalance(aToken);
     _liquidateMwin(pool, liquidator, borrower);
-    uint256 aTokenBalance = IERC20(_mwin()).balanceOf(aToken);
-    assertGt(aTokenBalance, 0, 'aToken emptied');
-    assertLt(aTokenBalance, 1e18, 'aToken left with at least 1 mWIN');
+    _assertBelowMwinMinBalance(aToken, 'aToken');
   }
 
   function test_mwinMinBalance_liquidation_liquidatorNeedsExemption() public {
@@ -362,9 +360,7 @@ contract AaveV3Horizon_mWINHINCListing_20261023_Test is
 
     _exemptMwinMinBalance(liquidator);
     _liquidateMwin(pool, liquidator, borrower);
-    uint256 seized = IERC20(_mwin()).balanceOf(liquidator);
-    assertGt(seized, 0, 'no mWIN seized');
-    assertLt(seized, 1e18, 'seized at least 1 mWIN');
+    _assertBelowMwinMinBalance(liquidator, 'liquidator');
   }
 
   /**
@@ -392,6 +388,8 @@ contract AaveV3Horizon_mWINHINCListing_20261023_Test is
       if (succeeds) {
         assertEq(IERC20(_mwin()).balanceOf(user), 0.5e18, 'user balance');
         assertEq(IERC20(_mwin()).balanceOf(aToken), 0.5e18, 'aToken balance');
+        _assertBelowMwinMinBalance(user, 'user');
+        _assertBelowMwinMinBalance(aToken, 'aToken');
       }
     }
   }
@@ -414,6 +412,8 @@ contract AaveV3Horizon_mWINHINCListing_20261023_Test is
       if (succeeds) {
         assertEq(IERC20(_mwin()).balanceOf(aToken), 0.75e18, 'aToken balance');
         assertEq(IERC20(_mwin()).balanceOf(user), 0.75e18, 'user balance');
+        _assertBelowMwinMinBalance(aToken, 'aToken');
+        _assertBelowMwinMinBalance(user, 'user');
       }
     }
   }
@@ -436,9 +436,9 @@ contract AaveV3Horizon_mWINHINCListing_20261023_Test is
       _liquidateMwin(pool, liquidator, borrower);
       if (succeeds) {
         uint256 seized = IERC20(_mwin()).balanceOf(liquidator);
-        assertGt(seized, 0, 'no mWIN seized');
-        assertLt(seized, 1e18, 'seized at least 1 mWIN');
         assertEq(IERC20(_mwin()).balanceOf(aToken), 1.5e18 - seized, 'aToken balance');
+        _assertBelowMwinMinBalance(liquidator, 'liquidator');
+        _assertBelowMwinMinBalance(aToken, 'aToken');
       }
     }
   }
@@ -525,7 +525,9 @@ contract AaveV3Horizon_mWINHINCListing_20261023_Test is
     _executeHorizonPayload(address(proposal));
     address aToken = pool.getReserveAToken(_mwin());
     _whitelistMwinRwa(aToken);
-    if (aTokenExempt) _exemptMwinMinBalance(aToken);
+    if (aTokenExempt) {
+      _exemptMwinMinBalance(aToken);
+    }
     return pool;
   }
 
@@ -574,7 +576,7 @@ contract AaveV3Horizon_mWINHINCListing_20261023_Test is
     IERC20(AaveV3EthereumHorizonAssets.GHO_UNDERLYING).approve(address(pool), MWIN_DEBT_TO_COVER);
   }
 
-  /// @dev covers 50k GHO, which seizes ~0.59 mWIN (50k * 1.08 bonus / ~$91.9k)
+  /// @dev covers 50k GHO, which seizes ~0.59 mWIN (50k * 1.08 bonus / ~$92.2k)
   function _liquidateMwin(IPool pool, address liquidator, address borrower) internal {
     vm.prank(liquidator);
     pool.liquidationCall({
@@ -609,6 +611,14 @@ contract AaveV3Horizon_mWINHINCListing_20261023_Test is
       return false;
     }
     return true;
+  }
+
+  /// @dev asserts `account` holds a non-zero balance below the 1-mWIN minimum, which it can only
+  ///      reach with M_WIN_MIN_BALANCE_EXEMPT_ROLE
+  function _assertBelowMwinMinBalance(address account, string memory label) internal view {
+    uint256 balance = IERC20(_mwin()).balanceOf(account);
+    assertGt(balance, 0, string.concat(label, ' holds no mWIN'));
+    assertLt(balance, MWIN_MIN_BALANCE, string.concat(label, ' holds at least 1 mWIN'));
   }
 
   function _setMwinRoles(address account, bool greenlisted, bool exempt) internal {

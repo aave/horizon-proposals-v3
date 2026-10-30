@@ -109,21 +109,16 @@ abstract contract HorizonRwaWhitelistHelper is Test {
     _whitelistAcredRwa(_requireAToken(pool, AaveV3EthereumHorizonCustom.ACRED_UNDERLYING));
     // Midas (mGLOBAL)
     _whitelistMidasRwa(_requireAToken(pool, AaveV3EthereumHorizonCustom.MGLOBAL_UNDERLYING));
-    // Midas (mWIN) — only if listed (aToken exists), exempt from the 1-mWIN minimum
-    address mwinAToken = pool.getReserveAToken(AaveV3EthereumHorizonCustom.MWIN_UNDERLYING);
-    if (mwinAToken != address(0)) {
-      _whitelistMwinRwa(mwinAToken);
-      _exemptMwinMinBalance(mwinAToken);
-    }
-    // Securitize (HINC) — only if listed (aToken exists), platform wallet like aVBILL
-    address hincAToken = pool.getReserveAToken(AaveV3EthereumHorizonCustom.HINC_UNDERLYING);
-    if (hincAToken != address(0)) {
-      _whitelistSecuritizePlatformWallet(
-        AaveV3EthereumHorizonCustom.HINC_UNDERLYING,
-        SECURITIZE_ADMIN,
-        hincAToken
-      );
-    }
+    // Midas (mWIN) — exempt from the 1-mWIN minimum
+    address mwinAToken = _requireAToken(pool, AaveV3EthereumHorizonCustom.MWIN_UNDERLYING);
+    _whitelistMwinRwa(mwinAToken);
+    _exemptMwinMinBalance(mwinAToken);
+    // Securitize (HINC) — platform wallet, like aVBILL
+    _whitelistSecuritizePlatformWallet(
+      AaveV3EthereumHorizonCustom.HINC_UNDERLYING,
+      SECURITIZE_ADMIN,
+      _requireAToken(pool, AaveV3EthereumHorizonCustom.HINC_UNDERLYING)
+    );
   }
 
   function _requireAToken(IPool pool, address underlying) internal view returns (address aToken) {
@@ -307,6 +302,7 @@ abstract contract HorizonRwaWhitelistHelper is Test {
     (bool success, ) = registryService.call(
       abi.encodeWithSignature('addWallet(address,string)', addressToWhitelist, fundId)
     );
+    require(success, 'Failed to call addWallet()');
     // always verify the address is whitelisted as a regular wallet OR passes compliance as a special wallet.
     require(
       _isSecuritizeWhitelisted(registryService, addressToWhitelist) ||
@@ -328,7 +324,9 @@ abstract contract HorizonRwaWhitelistHelper is Test {
     address walletManager = _getSecuritizeService(token, 'WALLET_MANAGER()');
 
     // Already registered (e.g. on mainnet after listing): re-adding reverts on a set wallet type
-    if (_isSecuritizePlatformWallet(walletManager, wallet)) return;
+    if (_isSecuritizePlatformWallet(walletManager, wallet)) {
+      return;
+    }
 
     _grantSecuritizeIssuerRole(token, admin);
 
