@@ -13,8 +13,10 @@ import {AaveV3EthereumHorizonAssets} from 'aave-address-book-latest/AaveV3Ethere
  *        - Superstate  (USTB, USCC) — AllowlistV4_2.setAllowed
  *        - Centrifuge  (JTRSY, JAAA) — RestrictionManager.endorse
  *        - Circle/USYC             — RolesAuthority.setUserRole
- *        - Securitize  (VBILL, ACRED) — RegistryService.addWallet
- *        - Midas       (mGLOBAL) — MidasAccessControl GREENLISTED_ROLE
+ *        - Securitize  (VBILL, ACRED, HINC) — RegistryService.addWallet;
+ *                      VBILL and HINC aTokens — WalletManager.addPlatformWallet
+ *        - Midas       (mGLOBAL, mWIN) — MidasAccessControl GREENLISTED_ROLE, plus the mWIN min
+ *                      balance exemption
  *
  *      Override `_whitelistRwaActors` in concrete tests to add whitelisting for
  *      newly listed assets.
@@ -32,24 +34,31 @@ abstract contract HorizonRwaWhitelistHelper is Test {
   address internal constant CIRCLE_SET_USER_ROLE_AUTHORIZED_CALLER =
     0xDbE01f447040F78ccbC8Dfd101BEc1a2C21f800D;
 
-  // ── Securitize (VBILL, ACRED) ────────────────────────────────────────
+  // ── Securitize (VBILL, ACRED, HINC) ──────────────────────────────────
   address internal constant SECURITIZE_ADMIN = 0xDA8e2d926D28a86aeE933d928357583aae5D3b85;
   string internal constant VBILL_SECURITIZE_FUND_ID = 'f27e20ca73314651b387da0aa9116f30';
   string internal constant ACRED_SECURITIZE_FUND_ID = '69023a78d57776eca9542d33';
+  string internal constant HINC_SECURITIZE_FUND_ID = '5ff4ed4eb641d30011314ea2';
 
-  // ── Midas (mGLOBAL) ──────────────────────────────────────────────────
+  // ── Midas (mGLOBAL, mWIN) ────────────────────────────────────────────
   // Shared Midas access control (mGLOBAL.accessControl()). Transfers require the
-  // sender and recipient to hold mGLOBAL's product-specific greenlist role.
+  // sender and recipient to hold the product-specific greenlist role.
   address internal constant MIDAS_ACCESS_CONTROL = 0x0312A9D1Ff2372DDEdCBB21e4B6389aFc919aC4B;
   bytes32 internal constant MGLOBAL_GREENLISTED_ROLE = keccak256('M_GLOBAL_GREENLISTED_ROLE');
+  bytes32 internal constant MWIN_GREENLISTED_ROLE = keccak256('M_WIN_GREENLISTED_ROLE');
+  // mWIN also reverts any transfer leaving the sender or recipient with a non-zero balance
+  // below 1 mWIN, unless that account holds the min balance exempt role.
+  bytes32 internal constant MWIN_MIN_BALANCE_EXEMPT_ROLE =
+    keccak256('M_WIN_MIN_BALANCE_EXEMPT_ROLE');
   // Slot of the OZ `_roles` mapping (role => account => bool) in MidasAccessControl.
   uint256 internal constant MIDAS_ROLES_SLOT = 101;
 
   // ── Whale addresses for tokens incompatible with foundry `deal` ────
   // Securitize DS-protocol tokens store balances in an external data store,
   // so cannot use native foundry deal. Transfer from a real holder instead.
-  address internal constant ACRED_WHALE = 0xa0759A0DFdE5395a1892aEd90eB5665698CFaa05;
+  address internal constant ACRED_WHALE = 0xbb543C77436645C8b95B64eEc39E3C0d48D4842b;
   address internal constant VBILL_WHALE = 0x69133f8Ef7F9A5F80D25c2DAEaea64C804aC7Cf9;
+  address internal constant HINC_WHALE = 0x1e695A689CF29c8fE0AF6848A957e3f84B61Fe69;
 
   // ─── Orchestrator ────────────────────────────────────────────────────
 
@@ -71,6 +80,11 @@ abstract contract HorizonRwaWhitelistHelper is Test {
       _whitelistAcredRwa(actors[i]);
       // Midas (mGLOBAL)
       _whitelistMidasRwa(actors[i]);
+      // Midas (mWIN), exempt from the 1-mWIN minimum so that E2E amounts below 1 mWIN can move
+      _whitelistMwinRwa(actors[i]);
+      _exemptMwinMinBalance(actors[i]);
+      // Securitize (HINC)
+      _whitelistHincRwa(actors[i]);
     }
   }
 
@@ -85,12 +99,26 @@ abstract contract HorizonRwaWhitelistHelper is Test {
     // Centrifuge (JTRSY, JAAA)
     _whitelistCentrifugeRwa(_requireAToken(pool, AaveV3EthereumHorizonAssets.JTRSY_UNDERLYING));
     _whitelistCentrifugeRwa(_requireAToken(pool, AaveV3EthereumHorizonAssets.JAAA_UNDERLYING));
-    // Securitize (VBILL)
-    _whitelistVbillRwa(_requireAToken(pool, AaveV3EthereumHorizonAssets.VBILL_UNDERLYING));
+    // Securitize (VBILL) — platform wallet, as on mainnet
+    _whitelistSecuritizePlatformWallet(
+      AaveV3EthereumHorizonAssets.VBILL_UNDERLYING,
+      SECURITIZE_ADMIN,
+      _requireAToken(pool, AaveV3EthereumHorizonAssets.VBILL_UNDERLYING)
+    );
     // Securitize (ACRED)
     _whitelistAcredRwa(_requireAToken(pool, AaveV3EthereumHorizonCustom.ACRED_UNDERLYING));
     // Midas (mGLOBAL)
     _whitelistMidasRwa(_requireAToken(pool, AaveV3EthereumHorizonCustom.MGLOBAL_UNDERLYING));
+    // Midas (mWIN) — exempt from the 1-mWIN minimum
+    address mwinAToken = _requireAToken(pool, AaveV3EthereumHorizonCustom.MWIN_UNDERLYING);
+    _whitelistMwinRwa(mwinAToken);
+    _exemptMwinMinBalance(mwinAToken);
+    // Securitize (HINC) — platform wallet, like aVBILL
+    _whitelistSecuritizePlatformWallet(
+      AaveV3EthereumHorizonCustom.HINC_UNDERLYING,
+      SECURITIZE_ADMIN,
+      _requireAToken(pool, AaveV3EthereumHorizonCustom.HINC_UNDERLYING)
+    );
   }
 
   function _requireAToken(IPool pool, address underlying) internal view returns (address aToken) {
@@ -215,25 +243,43 @@ abstract contract HorizonRwaWhitelistHelper is Test {
     );
   }
 
+  function _whitelistHincRwa(address addressToWhitelist) internal {
+    _whitelistSecuritizeRwa(
+      AaveV3EthereumHorizonCustom.HINC_UNDERLYING,
+      SECURITIZE_ADMIN,
+      HINC_SECURITIZE_FUND_ID,
+      addressToWhitelist
+    );
+  }
+
   /// @dev Midas whitelisting: grants mGLOBAL's greenlist role on the shared MidasAccessControl.
   function _whitelistMidasRwa(address addressToWhitelist) internal {
-    bytes32 slot = keccak256(
-      abi.encode(
-        addressToWhitelist,
-        keccak256(abi.encode(MGLOBAL_GREENLISTED_ROLE, MIDAS_ROLES_SLOT))
-      )
-    );
-    vm.store(MIDAS_ACCESS_CONTROL, slot, bytes32(uint256(1)));
+    _grantMidasRole(MGLOBAL_GREENLISTED_ROLE, addressToWhitelist);
+  }
 
-    // Verify whitelisted
+  /// @dev Midas whitelisting: grants mWIN's greenlist role.
+  function _whitelistMwinRwa(address addressToWhitelist) internal {
+    _grantMidasRole(MWIN_GREENLISTED_ROLE, addressToWhitelist);
+  }
+
+  /// @dev Exempts `account` from mWIN's 1-mWIN minimum balance.
+  function _exemptMwinMinBalance(address account) internal {
+    _grantMidasRole(MWIN_MIN_BALANCE_EXEMPT_ROLE, account);
+  }
+
+  function _grantMidasRole(bytes32 role, address account) internal {
+    _setMidasRole(role, account, true);
+  }
+
+  function _setMidasRole(bytes32 role, address account, bool granted) internal {
+    bytes32 slot = keccak256(abi.encode(account, keccak256(abi.encode(role, MIDAS_ROLES_SLOT))));
+    vm.store(MIDAS_ACCESS_CONTROL, slot, bytes32(uint256(granted ? 1 : 0)));
+
+    // Verify role set
     (bool success, bytes memory data) = MIDAS_ACCESS_CONTROL.call(
-      abi.encodeWithSignature(
-        'hasRole(bytes32,address)',
-        MGLOBAL_GREENLISTED_ROLE,
-        addressToWhitelist
-      )
+      abi.encodeWithSignature('hasRole(bytes32,address)', role, account)
     );
-    require(success && abi.decode(data, (bool)), 'Midas: address not greenlisted');
+    require(success && abi.decode(data, (bool)) == granted, 'Midas: role not set');
   }
 
   /**
@@ -247,37 +293,86 @@ abstract contract HorizonRwaWhitelistHelper is Test {
     string memory fundId,
     address addressToWhitelist
   ) internal {
-    (bool success, bytes memory data) = token.call(abi.encodeWithSignature('REGISTRY_SERVICE()'));
-    require(success, 'Failed to call REGISTRY_SERVICE()');
-    (success, data) = token.call(
-      abi.encodeWithSignature('getDSService(uint256)', abi.decode(data, (uint256)))
-    );
-    require(success, 'Failed to call getDSService()');
-    address registryService = abi.decode(data, (address));
-
-    // Ensure admin has a role on the trust service (role mapping at slot 1)
-    (success, data) = token.call(abi.encodeWithSignature('TRUST_SERVICE()'));
-    require(success, 'Failed to call TRUST_SERVICE()');
-    (success, data) = token.call(
-      abi.encodeWithSignature('getDSService(uint256)', abi.decode(data, (uint256)))
-    );
-    require(success, 'Failed to call getDSService() for trust');
-    address trustService = abi.decode(data, (address));
-    bytes32 roleSlot = keccak256(abi.encode(admin, uint256(1)));
-    vm.store(trustService, roleSlot, bytes32(uint256(2)));
+    address registryService = _getSecuritizeService(token, 'REGISTRY_SERVICE()');
+    _grantSecuritizeIssuerRole(token, admin);
 
     if (_isSecuritizeWhitelisted(registryService, addressToWhitelist)) return;
 
     vm.prank(admin);
-    (success, ) = registryService.call(
+    (bool success, ) = registryService.call(
       abi.encodeWithSignature('addWallet(address,string)', addressToWhitelist, fundId)
     );
+    require(success, 'Failed to call addWallet()');
     // always verify the address is whitelisted as a regular wallet OR passes compliance as a special wallet.
     require(
       _isSecuritizeWhitelisted(registryService, addressToWhitelist) ||
         _passesSecuritizeCompliance(token, addressToWhitelist),
       'Securitize: not whitelisted'
     );
+  }
+
+  /**
+   * @dev Securitize platform wallet registration via WalletManager.addPlatformWallet, matching how
+   *      Securitize registers Horizon aTokens on mainnet (aVBILL is a platform wallet). A platform
+   *      wallet holds the token for many investors and is not tied to an investor ID.
+   */
+  function _whitelistSecuritizePlatformWallet(
+    address token,
+    address admin,
+    address wallet
+  ) internal {
+    address walletManager = _getSecuritizeService(token, 'WALLET_MANAGER()');
+
+    // Already registered (e.g. on mainnet after listing): re-adding reverts on a set wallet type
+    if (_isSecuritizePlatformWallet(walletManager, wallet)) {
+      return;
+    }
+
+    _grantSecuritizeIssuerRole(token, admin);
+
+    vm.prank(admin);
+    (bool success, ) = walletManager.call(
+      abi.encodeWithSignature('addPlatformWallet(address)', wallet)
+    );
+    require(success, 'Failed to call addPlatformWallet()');
+
+    // Verify registered as a platform wallet
+    require(
+      _isSecuritizePlatformWallet(walletManager, wallet),
+      'Securitize: not a platform wallet'
+    );
+  }
+
+  /// @dev Resolves one of the token's DS services: `serviceIdGetter` (e.g. 'TRUST_SERVICE()')
+  ///      returns the service id, and getDSService maps it to the service address.
+  function _getSecuritizeService(
+    address token,
+    string memory serviceIdGetter
+  ) internal returns (address) {
+    (bool success, bytes memory data) = token.call(abi.encodeWithSignature(serviceIdGetter));
+    require(success, string.concat('Failed to call ', serviceIdGetter));
+    (success, data) = token.call(
+      abi.encodeWithSignature('getDSService(uint256)', abi.decode(data, (uint256)))
+    );
+    require(success, string.concat('Failed to call getDSService() for ', serviceIdGetter));
+    return abi.decode(data, (address));
+  }
+
+  /// @dev Grants `admin` the issuer role (2) on the token's trust service (role mapping at slot 1).
+  function _grantSecuritizeIssuerRole(address token, address admin) internal {
+    address trustService = _getSecuritizeService(token, 'TRUST_SERVICE()');
+    vm.store(trustService, keccak256(abi.encode(admin, uint256(1))), bytes32(uint256(2)));
+  }
+
+  /// @dev Returns true if `wallet` is registered as a platform wallet.
+  function _isSecuritizePlatformWallet(
+    address walletManager,
+    address wallet
+  ) internal returns (bool) {
+    (bool success, bytes memory data) = walletManager.call(
+      abi.encodeWithSignature('isPlatformWallet(address)', wallet)
+    );
+    return success && abi.decode(data, (bool));
   }
 
   /// @dev Returns true if `addr` is whitelisted as a regular wallet.
@@ -310,7 +405,8 @@ abstract contract HorizonRwaWhitelistHelper is Test {
   function _needsWhaleDeal(address token) internal pure returns (bool) {
     return
       token == AaveV3EthereumHorizonCustom.ACRED_UNDERLYING ||
-      token == AaveV3EthereumHorizonAssets.VBILL_UNDERLYING;
+      token == AaveV3EthereumHorizonAssets.VBILL_UNDERLYING ||
+      token == AaveV3EthereumHorizonCustom.HINC_UNDERLYING;
   }
 
   /// @dev Returns the whale address for `token`.
@@ -319,6 +415,8 @@ abstract contract HorizonRwaWhitelistHelper is Test {
       return ACRED_WHALE;
     } else if (token == AaveV3EthereumHorizonAssets.VBILL_UNDERLYING) {
       return VBILL_WHALE;
+    } else if (token == AaveV3EthereumHorizonCustom.HINC_UNDERLYING) {
+      return HINC_WHALE;
     } else {
       revert('_getWhale: no whale configured');
     }
