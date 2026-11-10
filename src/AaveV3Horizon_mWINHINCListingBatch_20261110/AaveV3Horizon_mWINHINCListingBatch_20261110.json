@@ -1,0 +1,108 @@
+{
+  "version": "1.0",
+  "chainId": "1",
+  "createdAt": 1794303028466,
+  "meta": {
+    "name": "Transactions Batch",
+    "description": "Execute the mWIN & HINC listing payload, then grant per-aToken AUTHORIZED_TRANSFER roles on the Horizon RwaATokenManager (Midas: aMWIN, Securitize: aHINC)",
+    "txBuilderVersion": "2.1.0",
+    "createdFromSafeAddress": "0x13B57382c36BAB566E75C72303622AF29E27e1d3",
+    "createdFromOwnerAddress": "",
+    "checksum": "0x1d5114bde0b0ef7ca3913525d0438a7b6dd71ab1cd4be31aaf6d77cf6aa3e820"
+  },
+  "transactions": [
+    {
+      "to": "0x09e8E1408a68778CEDdC1938729Ea126710E7Dda",
+      "value": "0",
+      "data": null,
+      "contractMethod": {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "target",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "value",
+            "type": "uint256"
+          },
+          {
+            "internalType": "string",
+            "name": "signature",
+            "type": "string"
+          },
+          {
+            "internalType": "bytes",
+            "name": "data",
+            "type": "bytes"
+          },
+          {
+            "internalType": "bool",
+            "name": "withDelegatecall",
+            "type": "bool"
+          }
+        ],
+        "name": "executeTransaction",
+        "payable": true
+      },
+      "contractInputsValues": {
+        "target": "0xB45F91eb35e806408597AdCe4153ce06A18B839d",
+        "value": "0",
+        "signature": "execute()",
+        "data": "0x",
+        "withDelegatecall": "true"
+      }
+    },
+    {
+      "to": "0x803e5Db3E26e88AD0a682A46c3E04cdd053D0EB9",
+      "value": "0",
+      "data": null,
+      "contractMethod": {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "aToken",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          }
+        ],
+        "name": "grantAuthorizedTransferRole",
+        "payable": false
+      },
+      "contractInputsValues": {
+        "aToken": "0x6d094e48Ee2E7C43787aFa0ec5aCcC5F644F976C",
+        "account": "0x8003544D32eE074aA8A1fb72129Fa8Ef7fe02E5f"
+      }
+    },
+    {
+      "to": "0x803e5Db3E26e88AD0a682A46c3E04cdd053D0EB9",
+      "value": "0",
+      "data": null,
+      "contractMethod": {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "aToken",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          }
+        ],
+        "name": "grantAuthorizedTransferRole",
+        "payable": false
+      },
+      "contractInputsValues": {
+        "aToken": "0x30a62C38265B9Df787d22E62e52C541051B4bCdF",
+        "account": "0x59c1eAcEc450c57Dcb9b8725d0F96635C2b676Ee"
+      }
+    }
+  ]
+}
