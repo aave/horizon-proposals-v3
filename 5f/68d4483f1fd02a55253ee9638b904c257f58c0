@@ -1,0 +1,28 @@
+diffs/AaveV3Horizon_mWINHINCListingBatch_20261110_before_AaveV3Horizon_mWINHINCListingBatch_20261110_after.md
+  s_2bc10e7d26489f::t_d4bf856c67b6b3 1-710
+src/AaveV3Horizon_mWINHINCListingBatch_20261110/AaveV3Horizon_mWINHINCListingBatch_20261110.json
+  s_2bc10e7d26489f::t_cfff3b9389668a 1-108
+src/AaveV3Horizon_mWINHINCListingBatch_20261110/AaveV3Horizon_mWINHINCListingBatch_20261110.t.sol
+  s_2bc10e7d26489f::t_4344f540aa9fec 1-731
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5f68d4483f1fd02a55253ee9638b904c257f58c0",
+  "prompts": {},
+  "humans": {
+    "h_0f977de3f043fc": {
+      "author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_2bc10e7d26489f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c17fbce8-c529-4890-a816-221a667180e8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}
